@@ -1,6 +1,7 @@
 import Replicate, { type FileOutput } from 'replicate';
 import { OutputImageMime } from '@clickretina/contract';
 import { config } from '../../config.js';
+import { withRetry } from './retry.js';
 
 /**
  * Shared Replicate client + helper for the pipeline (Model 2 — Qwen Image 2.0
@@ -71,43 +72,45 @@ function resolveMime(raw: string | undefined, fallback: OutputImageMime): Output
  */
 export async function editImage({ dataUri, prompt, fallbackMime }: EditImageArgs): Promise<EditImageResult> {
   const replicate = getReplicate();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), config.replicate.timeoutMs);
-  try {
-    const out = await replicate.run(
-      config.replicate.model as `${string}/${string}`,
-      {
-        input: {
-          image: dataUri,
-          prompt,
-          match_input_image: true,
-          enable_prompt_expansion: false,
+  return withRetry(async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), config.replicate.timeoutMs);
+    try {
+      const out = await replicate.run(
+        config.replicate.model as `${string}/${string}`,
+        {
+          input: {
+            image: dataUri,
+            prompt,
+            match_input_image: true,
+            enable_prompt_expansion: false,
+          },
+          signal: controller.signal,
         },
-        signal: controller.signal,
-      },
-    );
+      );
 
-    const first = firstOutput(out);
+      const first = firstOutput(out);
 
-    // Default SDK behaviour: FileOutput (a ReadableStream with `.blob()`).
-    // Fallback: a plain URL string when `useFileOutput` is disabled.
-    let rawMime: string | undefined;
-    let base64: string;
-    if (typeof first === 'string') {
-      const resp = await fetch(first, { signal: controller.signal });
-      rawMime = resp.headers.get('content-type') ?? undefined;
-      base64 = Buffer.from(await resp.arrayBuffer()).toString('base64');
-    } else {
-      const blob = await first.blob();
-      rawMime = blob.type || undefined;
-      base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+      // Default SDK behaviour: FileOutput (a ReadableStream with `.blob()`).
+      // Fallback: a plain URL string when `useFileOutput` is disabled.
+      let rawMime: string | undefined;
+      let base64: string;
+      if (typeof first === 'string') {
+        const resp = await fetch(first, { signal: controller.signal });
+        rawMime = resp.headers.get('content-type') ?? undefined;
+        base64 = Buffer.from(await resp.arrayBuffer()).toString('base64');
+      } else {
+        const blob = await first.blob();
+        rawMime = blob.type || undefined;
+        base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+      }
+
+      if (!base64) {
+        throw new Error('Replicate returned an empty image');
+      }
+      return { base64, mimeType: resolveMime(rawMime, fallbackMime) };
+    } finally {
+      clearTimeout(timer);
     }
-
-    if (!base64) {
-      throw new Error('Replicate returned an empty image');
-    }
-    return { base64, mimeType: resolveMime(rawMime, fallbackMime) };
-  } finally {
-    clearTimeout(timer);
-  }
+  }, { ...config.ai.retry, label: 'replicate.editImage' });
 }

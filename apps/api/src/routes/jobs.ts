@@ -30,12 +30,20 @@ jobsRouter.post('/jobs', async (req, res) => {
  * Unknown or TTL-evicted id → 404.
  */
 jobsRouter.get('/jobs/:id', async (req, res) => {
-  const job = await jobsQueue.getJob(req.params.id);
+  let job = await jobsQueue.getJob(req.params.id);
   if (!job) {
     return res.status(404).json(apiError('not_found', 'Job not found or expired'));
   }
 
   const status = mapState(await job.getState());
+  // Close a read-skew race: `job` is a snapshot taken before getState(), so the
+  // state can flip to terminal while returnvalue/failedReason are still empty.
+  // Re-read once so the completed result (or failure reason) is populated.
+  if ((status === 'completed' && job.returnvalue == null) ||
+      (status === 'failed' && job.failedReason == null)) {
+    job = (await jobsQueue.getJob(req.params.id)) ?? job;
+  }
+
   const body: GetJobResponse = {
     jobId: job.id ?? req.params.id,
     status,

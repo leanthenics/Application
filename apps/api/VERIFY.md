@@ -117,3 +117,19 @@ Temporarily break a credential to confirm fail-fast surfaces a `failed` status (
 - [ ] Checks 1–3 pass and the saved image is a genuine edit (furniture added, room preserved).
 - [ ] Checks 4–6 return the right 400/404 envelopes.
 - [ ] (Optional) Check 7 ends `failed` cleanly.
+
+---
+
+## 8. Model 3 (key-terms) + retry net + GET race (B2.3 / B2.6)
+On a completed job (check 3), additionally confirm:
+- [ ] `result.products` = up to 5 **real, descriptive** key-terms read from the edited image
+      (e.g. "mid-century brown leather sofa"), **not** the old stubs (modern white sofa / coffee table /
+      arc lamp). Each has a well-formed `amazonUrl` (tag empty for now).
+- [ ] **No `completed` + `result: null`** — when `status` first reads `completed`, `result` is already
+      populated (the read-skew race fix). If you ever see completed with null result, that's a regression.
+- [ ] **Retry net (worker log):** on a live Gemini/Replicate 429/503 you'll see
+      `[retry] <label> attempt N failed (status 503); retrying in <ms>ms`. Up to 3 attempts total, then
+      the job fails fast (sustained outage). A clean run shows **no** `[retry]` lines.
+
+> Verified live 2026-06-30: 5 real keyterms returned; retry recovered a 503 (`retrying in 846ms`) and
+> also failed fast after 3×503; GET no longer returns completed-with-null.

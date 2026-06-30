@@ -23,4 +23,11 @@ export const config = {
     model: process.env.REPLICATE_MODEL ?? '',
     timeoutMs: Number(process.env.REPLICATE_TIMEOUT_MS ?? 120000),
   },
+  ai: {
+    // Per-call transient-retry (429/503) for model calls. maxAttempts = total tries.
+    retry: {
+      maxAttempts: Number(process.env.AI_MAX_RETRIES ?? 3),
+      baseDelayMs: Number(process.env.AI_RETRY_BASE_MS ?? 500),
+    },
+  },
 } as const;
