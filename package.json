@@ -1,0 +1,14 @@
+{
+  "name": "clickretina",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ClickRetina monorepo (backend + mobile + shared contract)",
+  "scripts": {
+    "build:contract": "pnpm --filter @clickretina/contract build",
+    "dev:api": "pnpm --filter @clickretina/api dev",
+    "dev:worker": "pnpm --filter @clickretina/api worker",
+    "build:api": "pnpm --filter @clickretina/api build",
+    "start:api": "pnpm --filter @clickretina/api start",
+    "start:worker": "pnpm --filter @clickretina/api start:worker"
+  }
+}

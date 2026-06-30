@@ -1,0 +1,18 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Force a single ioredis version so the instance type we create matches the one
+# BullMQ expects (BullMQ pulled 5.10.1, apps/api asked for 5.11.1 -> type clash).
+overrides:
+  ioredis: '5.11.1'
+
+# Approved build scripts (supply-chain gate). All are reputable deps we rely on:
+# - esbuild: native binary used by tsx (dev server)
+# - msgpackr-extract: native accelerator for BullMQ msgpackr
+# - protobufjs / @google/genai: postinstall for our AI SDK deps
+allowBuilds:
+  '@google/genai': true
+  esbuild: true
+  msgpackr-extract: true
+  protobufjs: true
