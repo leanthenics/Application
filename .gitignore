@@ -22,3 +22,7 @@ pnpm-debug.log*
 Thumbs.db
 .idea/
 .vscode/
+
+# Local test artifacts (manual verification inputs — not source)
+sample-image.b64.txt
+sample-image.jpeg.jpeg

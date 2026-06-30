@@ -1,45 +1,20 @@
 import { Worker, type Job } from 'bullmq';
-import type { JobResult } from '@clickretina/contract';
-import { config } from '../config.js';
 import { JOBS_QUEUE, createRedis, type JobData } from './shared.js';
+import { runPipeline } from '../pipeline/runner.js';
 
 /**
  * BullMQ worker — runs as a SEPARATE process (`pnpm dev:worker`). Concurrency 1.
  *
- * ┌───────────────────────────────────────────────────────────────────────────┐
- * │  ⚠️  TEMPLATE / STUB ONLY — NOT real output.                                │
- * │  `buildStubResult` returns hard-coded mock data shaped like the real        │
- * │  `JobResult` (architecture §6) so the contract + GET /jobs/:id can be        │
- * │  exercised. It echoes the input image and invents fake products.            │
- * │  TODO(B2): replace `buildStubResult` with the real 3-model pipeline          │
- * │  (Gemini enhance → Replicate edit → Gemini vision keyterms → Amazon URLs).   │
- * └───────────────────────────────────────────────────────────────────────────┘
+ * Delegates to the AI pipeline (`pipeline/runner.ts`). As of B2.1, Model 1
+ * (Gemini prompt enhancement) is real; Models 2–4 are stubbed inside the runner
+ * and replaced in B2.2–B2.4. Any step that throws → job `failed` (queue is
+ * `attempts: 1`, fail-fast).
  */
-
-/** Fake keyterms — placeholder until Model 3 (vision) extracts real ones. */
-const STUB_KEYTERMS = ['modern white sofa', 'wooden coffee table', 'arc floor lamp'];
-
-/** TEMPLATE: well-formed Amazon affiliate search URL (architecture §5 / decision 5). */
-function stubAmazonUrl(keyterm: string): string {
-  return `https://www.amazon.${config.amazon.tld}/s?k=${encodeURIComponent(keyterm)}&tag=${encodeURIComponent(config.amazon.affiliateTag)}`;
-}
-
-/** TEMPLATE: mock `JobResult`. Shape is real (contract-typed); the data is fake. Replace in B2. */
-function buildStubResult(data: JobData): JobResult {
-  return {
-    outputImage: data.image, // STUB: echo the input image until Model 2 returns a real edit
-    mimeType: data.mimeType,
-    products: STUB_KEYTERMS.map((keyterm) => ({ keyterm, amazonUrl: stubAmazonUrl(keyterm) })),
-  };
-}
-
-const worker = new Worker<JobData>(
+const worker = new Worker<JobData, Awaited<ReturnType<typeof runPipeline>>>(
   JOBS_QUEUE,
   async (job: Job<JobData>) => {
     console.log(`[worker] processing ${job.id} prompt="${job.data.prompt}" mime=${job.data.mimeType}`);
-    await new Promise((resolve) => setTimeout(resolve, 7000)); // simulate work (observe 'processing' across 2s polls)
-    console.log(`[worker] ⚠️ returning STUB/template JobResult for ${job.id} (B1.4 — replace in B2)`);
-    return buildStubResult(job.data);
+    return runPipeline(job.data, { jobId: job.id! });
   },
   { connection: createRedis(), concurrency: 1 },
 );

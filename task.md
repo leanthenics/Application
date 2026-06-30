@@ -7,9 +7,12 @@
 > **Update this file as we go** — flip the box and add notes when a task is done.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
-**Current focus:** **B2 — real AI pipeline** (replace the B1.4 stub). B1 fully done & verified on Upstash:
-POST → poll GET → completed with a contract-typed (template) `JobResult`. Contract now holds all B1 shapes
-(only `ApiError` + constants deferred). Next: B2.0 pipeline scaffolding → B2.1 Gemini prompt-enhance.
+**Current focus:** **B2 — real AI pipeline** (replace the B1.4 stub). B2.0 (scaffolding) + B2.1 (Model 1
+prompt-enhance) + **B2.2 (Model 2 Replicate Qwen Image 2.0 edit) DONE & verified live (2026-06-30)**:
+POST a real room photo → worker logged `enhancePrompt ok` → `editImage ok` → `completed`; GET returned a
+**genuinely edited** image (not the input echo), `mimeType: image/png`. Models 3–4 still stubbed inside
+`pipeline/runner.ts`. **Next: B2.3 — Gemini Flash-Lite vision key-term extraction** (replace the fixed
+`STUB_KEYTERMS` in `runner.ts` with real terms read from the edited image).
 
 > Note: package manager is **pnpm workspaces** (v11.9.0 via corepack).
 > Env quirk: global `pnpm` shim installed into `%AppData%\npm` (npm prefix, on PATH) via
@@ -90,31 +93,50 @@ POST → poll GET → completed with a contract-typed (template) `JobResult`. Co
 - ℹ️ `AMAZON_AFFILIATE_TAG` is empty in `.env` → URLs end `&tag=`. Set it when ready.
 
 ### B1.5 Verify lifecycle
-- [ ] Manual: `POST /jobs` → jobId; poll `GET /jobs/:id` shows `queued → processing → completed`.
-- [ ] Manual: force error path → job ends `failed` with message.
-- [ ] README quickstart (install, env, run Redis, run api + worker, sample curl).
+- [x] Manual: `POST /jobs` → jobId; poll `GET /jobs/:id` shows `queued → processing → completed`.
+      **Verified in Postman (2026-06-30)** against the real B2.2 pipeline.
+- [x] Manual: force error path → job ends `failed` with message. **Verified** — a transient Gemini 503
+      (`UNAVAILABLE`) in the enhancePrompt step surfaced as `failed` + message via `GET` (fail-fast worked).
+- [ ] README quickstart (install, env, run Redis, run api + worker, sample curl). — see `apps/api/VERIFY.md`
+      for the manual checklist; README still TODO.
 
 ---
 
 ## B2 — Real AI pipeline (replace the stub, one model at a time)
 
-### B2.0 Pipeline scaffolding
-- [ ] `pipeline/` module with a typed step interface (`input → output`) and ordered runner.
-- [ ] Per-step structured logging (step name, duration, jobId) — no image payloads in logs.
-- [ ] Shared AI client config (API keys, model ids, timeouts) from env.
+### B2.0 Pipeline scaffolding — **coded & build-clean (2026-06-30)**
+- [x] `pipeline/` module with a typed step interface (`input → output`) and ordered runner.
+      `pipeline/step.ts` (`PipelineStep<In,Out>` + `runStep()` timing/log wrapper, fail-fast rethrow),
+      `pipeline/context.ts` (`PipelineContext { jobId }`), `pipeline/runner.ts` (`runPipeline` — explicit
+      ordered composition; step 1 real, steps 2–4 stubbed in-runner w/ `TODO(B2.2–B2.4)`).
+- [x] Per-step structured logging (step name, duration, jobId) — no image payloads in logs.
+      `[pipeline] <jobId> <name> ok (<ms>ms)` / `… failed (<ms>ms): <msg>`.
+- [x] Shared AI client config (API keys, model ids, timeouts) from env. `pipeline/ai/gemini.ts`
+      (lazy `GoogleGenAI` singleton, throws if key missing; `generateText()` with `AbortController`
+      hard timeout). `config.ts`: `gemini.model` default pinned `gemini-2.5-flash-lite`, added
+      `gemini.timeoutMs` (`GEMINI_TIMEOUT_MS`, 30000). `.env.example` updated.
 
-### B2.1 Model 1 — Gemini Flash-Lite (prompt enhancement)
-- [ ] Gemini client + `enhancePrompt(userPrompt) → enhancedPrompt`.
-- [ ] Enhancement system prompt (interior/furniture editing context).
-- [ ] Guard: empty/garbage response → throw (fail-fast).
-- [ ] Unit test with a mocked Gemini response.
+### B2.1 Model 1 — Gemini Flash-Lite (prompt enhancement) — **DONE & verified live (2026-06-30)**
+- [x] Gemini client + `enhancePrompt(userPrompt) → enhancedPrompt`. `pipeline/steps/enhancePrompt.ts`
+      (`PipelineStep<string,string>`), via shared `generateText()`.
+- [x] Enhancement system prompt (interior/furniture editing context). Output-only rewrite, preserve room structure.
+- [x] Guard: empty/garbage response → throw (fail-fast). Empty checked in both `generateText()` and the step;
+      output clamped to 1200 chars.
+- [ ] Unit test with a mocked Gemini response. — **deferred** (user: manual endpoint testing first; decide on
+      test runner after). Worker now calls `runPipeline`; stub helpers removed from `worker.ts`.
 
-### B2.2 Model 2 — Replicate Qwen Image 2.0 (image edit)
-- [ ] Replicate client + `editImage(inputImage, enhancedPrompt) → editedImage`.
-- [ ] Feed input as base64/data-uri; await prediction; fetch output image → base64.
-- [ ] Handle Replicate async states (starting/processing/succeeded/failed) + timeout.
-- [ ] Guard: no/invalid output → throw.
-- [ ] Unit test with mocked Replicate client.
+### B2.2 Model 2 — Replicate Qwen Image 2.0 (image edit) — **DONE & verified live (2026-06-30)**
+- [x] Replicate client + `editImage({ dataUri, prompt, fallbackMime }) → { base64, mimeType }`.
+      `pipeline/ai/replicate.ts` (lazy `Replicate` singleton, throws if token/model missing).
+- [x] Feed input as **data-uri** (`data:<mime>;base64,<bytes>`); `replicate.run(model, { input })`;
+      fetch output → base64. Qwen params: `match_input_image:true`, `enable_prompt_expansion:false`.
+- [x] Async states + timeout: `replicate.run` polls the prediction internally (rejects on `failed`);
+      hard cap via `AbortController` = `config.replicate.timeoutMs` (`REPLICATE_TIMEOUT_MS`, default 120000).
+- [x] Guard: empty/missing output → throw (`firstOutput()` + empty-base64 check).
+- [x] Output mime: read Replicate's real content-type, validate via `OutputImageMime` (else fall back
+      to input mime). **Contract widened**: added `OutputImageMime` (jpeg/png/webp) for `JobResult.mimeType`;
+      input `ImageMime` stays strict (jpeg/png). Wired step into `runner.ts` (echo stub removed).
+- [ ] Unit test with mocked Replicate client. — **deferred** (manual verification first, per standing decision).
 
 ### B2.3 Model 3 — Gemini Flash-Lite vision (key-term extraction)
 - [ ] `extractKeyterms(editedImage) → string[]` (max 5, most prominent furniture).
@@ -240,3 +262,53 @@ as `outputImage` + 2–3 fake products w/ Amazon affiliate URLs). Then promote `
 per-step logging, shared AI client config), then **B2.1** Gemini Flash-Lite prompt enhancement. The
 public contract (POST/GET shapes) must stay **unchanged** as the stub is replaced by the real pipeline.
 ⚠️ Still TODO: rotate the Upstash dev token (leaked in an earlier crash trace); set `AMAZON_AFFILIATE_TAG`.
+
+### 2026-06-30 (cont. 4) — B2.0 scaffolding + B2.1 Model 1 (Gemini prompt enhance)
+- **New module `apps/api/src/pipeline/`**: `context.ts` (`PipelineContext`), `step.ts`
+  (`PipelineStep<In,Out>` + `runStep()` timing/structured-logging wrapper, fail-fast rethrow),
+  `ai/gemini.ts` (lazy `GoogleGenAI` singleton — throws if `GEMINI_API_KEY` empty; `generateText()`
+  with `AbortController` hard timeout, returns trimmed `response.text`), `steps/enhancePrompt.ts`
+  (Model 1, interior/furniture system instruction, empty guard + 1200-char clamp), `runner.ts`
+  (`runPipeline(data, ctx)`: step 1 REAL, steps 2–4 stubbed in-runner with `TODO(B2.2–B2.4)`).
+- **`worker.ts`** now delegates to `runPipeline` (inline stub helpers removed). **`config.ts`**: pinned
+  `gemini.model = gemini-2.5-flash-lite`, added `gemini.timeoutMs`. **`.env.example`** updated.
+- **No `packages/contract` change** (Model 1 adds no public shape; `JobResult` stable). `pnpm build:api`
+  clean. User set `GEMINI_API_KEY` + model in `apps/api/.env`.
+- Decision: automated test **deferred** (manual endpoint verification first).
+
+**B2.1 verified live (2026-06-30)**: POST → worker logged `[pipeline] <jobId> enhancePrompt ok` + the
+enhanced prompt → poll GET → completed `JobResult`. Model 1 confirmed against live Gemini.
+
+**▶ Resume next session at: B2.2** — Replicate Qwen Image 2.0 edit (feed `enhancedPrompt` + input image,
+await prediction, fetch output → base64; replace the runner's `outputImage` stub). Keep `JobResult`
+contract unchanged. ⚠️ Still TODO: rotate the Upstash dev token; set `AMAZON_AFFILIATE_TAG`.
+
+### 2026-06-30 (cont. 5) — B2.2 Model 2 (Replicate Qwen Image 2.0) — **real image edit live**
+- **New `pipeline/ai/replicate.ts`** (mirrors `ai/gemini.ts`): lazy `Replicate` singleton (throws if
+  `REPLICATE_API_TOKEN`/`REPLICATE_MODEL` missing); `editImage()` builds nothing — caller passes a
+  data-uri — calls `replicate.run(model, { input: { image, prompt, match_input_image:true,
+  enable_prompt_expansion:false }, signal })`, normalizes single-vs-array output, reads bytes via
+  `FileOutput.blob()` (URL-string fallback), `AbortController` timeout. `resolveMime()` validates the
+  real content-type against `OutputImageMime`, else falls back to input mime.
+- **New `pipeline/steps/editImage.ts`**: `PipelineStep<EditImageInput, EditImageOutput>` — builds the
+  `data:<mime>;base64,<bytes>` URI, calls the client, guards empty output.
+- **`runner.ts`**: step 2 now REAL (`runStep(editImageStep, …)`), echo stub removed; steps 3–4 still stub.
+- **`config.ts`**: added `replicate.timeoutMs` (`REPLICATE_TIMEOUT_MS`, 120000). **`.env.example`** updated.
+- **Contract change (user-approved)**: added `OutputImageMime` (jpeg/png/**webp**) → `JobResult.mimeType`;
+  surfaced by the type-checker (Qwen returns a wider format set than the strict input `ImageMime`).
+- **Decisions this step**: `replicate.run()` blocking + own timeout · `match_input_image:true` +
+  `enable_prompt_expansion:false` · 120s timeout · output mime = Replicate's real content-type.
+- **Verified live**: POST `sample-image.jpeg` (backyard) + "add a mid-century tan leather sofa + tall
+  potted plant" → `enhancePrompt ok (5.9s)` → `editImage ok (7.2s)` → `completed` in ~16s. Output is a
+  real edit (sofa + fiddle-leaf fig, room structure preserved), `mimeType image/png`, not the input echo.
+  Products still the 3 stubs (expected). Build (contract + api) clean under TS strict.
+- **Manual verification by user (Postman, 2026-06-30)**: happy path (202 → poll → completed, edited image
+  viewed via Postman Visualizer) confirmed; also hit a transient Gemini 503 which correctly ended the job
+  `failed` (failure path validated). Added `apps/api/VERIFY.md` (reusable manual checklist, Postman-first).
+- **New working agreements (this session)**: (1) approval-before-edit — no code/file change without the
+  user's OK first; (2) every step ends with a manual Postman verification checklist the user runs.
+
+**▶ Resume next session at: B2.3** — Gemini Flash-Lite **vision** key-term extraction: add
+`steps/extractKeyterms.ts` (`editedImage → string[]`, max 5), reuse the shared Gemini client (add a
+vision/image-input path to `ai/gemini.ts`), replace `STUB_KEYTERMS` in `runner.ts`. Keep `JobResult`
+shape stable. ⚠️ Still TODO: rotate the Upstash dev token; set `AMAZON_AFFILIATE_TAG`.

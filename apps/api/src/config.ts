@@ -15,10 +15,12 @@ export const config = {
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
-    model: process.env.GEMINI_MODEL ?? '',
+    model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite',
+    timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS ?? 30000),
   },
   replicate: {
     apiToken: process.env.REPLICATE_API_TOKEN ?? '',
     model: process.env.REPLICATE_MODEL ?? '',
+    timeoutMs: Number(process.env.REPLICATE_TIMEOUT_MS ?? 120000),
   },
 } as const;

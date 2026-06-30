@@ -14,6 +14,9 @@ import { z } from 'zod';
  *   - 2026-06-30 — GET /jobs/:id verified + result shape finalized (B1.4 stub) →
  *                  JobStatus, Product, JobResult, GetJobResponse.
  *     (B2 fills real data into JobResult; the SHAPE is stable, so it's safe to promote now.)
+ *   - 2026-06-30 — B2.2 (Model 2 wired): added OutputImageMime (jpeg/png/webp) for
+ *                  JobResult.mimeType, since Qwen returns its native format (webp). Input
+ *                  ImageMime stays strict (jpeg/png). Additive widening of the output set.
  *
  * Still pending (added when required):
  *   schemas: ApiError
@@ -21,8 +24,15 @@ import { z } from 'zod';
  */
 
 // ── Shared enums ────────────────────────────────────────────────────────────
+// Input is constrained to what the client uploads (resized JPEG; PNG allowed).
 export const ImageMime = z.enum(['image/jpeg', 'image/png']);
 export type ImageMime = z.infer<typeof ImageMime>;
+
+// Output may differ from input: Model 2 (Qwen Image 2.0) returns its native
+// format (commonly WebP). `JobResult.mimeType` reports the edited image's real
+// content-type, so the output set is wider than the input set.
+export const OutputImageMime = z.enum(['image/jpeg', 'image/png', 'image/webp']);
+export type OutputImageMime = z.infer<typeof OutputImageMime>;
 
 // ── POST /jobs ──────────────────────────────────────────────────────────────
 // base64 (no data-uri prefix): standard charset, optional `=` padding, length a multiple of 4.
@@ -55,7 +65,7 @@ export type Product = z.infer<typeof Product>;
 
 export const JobResult = z.object({
   outputImage: z.string(), // base64 (no data-uri prefix)
-  mimeType: ImageMime,
+  mimeType: OutputImageMime, // edited image's real content-type (may be webp)
   products: z.array(Product),
 });
 export type JobResult = z.infer<typeof JobResult>;
