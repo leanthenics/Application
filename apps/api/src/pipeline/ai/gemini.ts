@@ -64,14 +64,19 @@ export interface GenerateFromImageArgs {
   prompt: string;
   /** System instruction steering the model. */
   systemInstruction: string;
-  /** Structured-output schema; the response is JSON matching it. */
-  responseSchema: Schema;
+  /**
+   * Structured-output schema. When provided (Model 3), the response is JSON
+   * matching it. When omitted (Model 1 vision enhancement), the model returns
+   * free-form text.
+   */
+  responseSchema?: Schema;
 }
 
 /**
- * Single-turn multimodal generation (image + text) with structured JSON output
- * and the same hard timeout as `generateText`. Returns the trimmed response text
- * (a JSON string per `responseSchema`), or throws if the model returned nothing.
+ * Single-turn multimodal generation (image + text) with the same hard timeout as
+ * `generateText`. With `responseSchema` the response is a JSON string matching it;
+ * without it, plain free-form text. Returns the trimmed response, or throws if the
+ * model returned nothing.
  */
 export async function generateFromImage({
   image,
@@ -90,8 +95,8 @@ export async function generateFromImage({
         contents: [{ parts: [{ inlineData: { mimeType, data: image } }, { text: prompt }] }],
         config: {
           systemInstruction,
-          responseMimeType: 'application/json',
-          responseSchema,
+          // Structured JSON only when a schema is supplied (Model 3); otherwise free text (Model 1).
+          ...(responseSchema ? { responseMimeType: 'application/json', responseSchema } : {}),
           abortSignal: controller.signal,
         },
       });

@@ -7,14 +7,15 @@
 > **Update this file as we go** — flip the box and add notes when a task is done.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
-**Current focus:** **B2 — real AI pipeline: COMPLETE & user-verified live (2026-07-01).** The full
-pipeline runs end-to-end — `enhancePrompt → editImage → extractKeyterms → Amazon URLs → completed` with
-real data (edited image + up to 5 real product keyterms + affiliate links). Shipped across B2: a
-**transient-retry safety net** (429/503), a **GET-route read-skew race fix**, an **env-swappable Model 2
-provider switch (Qwen | FLUX Kontext Pro — Kontext Pro chosen; B2.7 edit fidelity DROPPED)**, a real
-**Amazon URL builder** (`pipeline/amazon.ts`), and **client-safe error messages** (`pipeline/errors.ts`,
-tiered busy/timeout/generic). Contract unchanged throughout. **Next: discuss commit + B3 (hardening) /
-frontend.** Only deferred B2 items are the per-step **unit tests** (no test runner yet → B3.4).
+**Current focus:** **NEXT UP → FRONTEND F0** (Expo scaffold). **Backend B2 is COMPLETE** and the full
+pipeline runs end-to-end — `enhancePrompt(vision) → editImage(Kontext) → extractKeyterms → Amazon URLs →
+completed` with real data (edited image + up to 5 real product keyterms + affiliate links). Shipped across
+B2: transient-retry net (429/503), GET read-skew fix, env-swappable Model 2 provider (Qwen | **Kontext
+Pro** chosen; B2.7 dropped), Amazon URL builder (`pipeline/amazon.ts`), client-safe tiered errors
+(`pipeline/errors.ts`), and a **vision-based Model 1** with a preservation-first, add-only prompt (5–8
+cohesive items; background preserved). Contract unchanged throughout. **Model 1 prompt may want one more
+verify pass** (item count). Deferred backend: **B3 hardening** + per-step **unit tests** (no test runner
+yet → B3.4).
 
 > Note: package manager is **pnpm workspaces** (v11.9.0 via corepack).
 > Env quirk: global `pnpm` shim installed into `%AppData%\npm` (npm prefix, on PATH) via
@@ -118,10 +119,16 @@ frontend.** Only deferred B2 items are the per-step **unit tests** (no test runn
       hard timeout). `config.ts`: `gemini.model` default pinned `gemini-2.5-flash-lite`, added
       `gemini.timeoutMs` (`GEMINI_TIMEOUT_MS`, 30000). `.env.example` updated.
 
-### B2.1 Model 1 — Gemini Flash-Lite (prompt enhancement) — **DONE & verified live (2026-06-30)**
-- [x] Gemini client + `enhancePrompt(userPrompt) → enhancedPrompt`. `pipeline/steps/enhancePrompt.ts`
-      (`PipelineStep<string,string>`), via shared `generateText()`.
-- [x] Enhancement system prompt (interior/furniture editing context). Output-only rewrite, preserve room structure.
+### B2.1 Model 1 — Gemini Flash-Lite (prompt enhancement) — **DONE & verified live (2026-06-30); upgraded to VISION (2026-07-01)**
+- [x] Gemini client + `enhancePrompt(userPrompt) → enhancedPrompt`. `pipeline/steps/enhancePrompt.ts`.
+      **Upgraded 2026-07-01 to vision** (`PipelineStep<EnhancePromptInput,string>` where input =
+      `{ image, mimeType, prompt }`): now sees the input image via `generateFromImage()` (free-text path,
+      `responseSchema` made optional) so it identifies the space and suggests only context-appropriate
+      products. `runner.ts` passes `data.image`/`mimeType` into step 1.
+- [x] Enhancement system prompt — **rewritten (2026-07-01)**: space-agnostic (indoor/garden/terrace/…),
+      context-appropriate products only (fixes garden photo → indoor sofa/fireplace bug), **do NOT change
+      the existing background/scene**, and **integrate items naturally INTO the scene** (scale/perspective/
+      grounded contact shadows; not foreground paste); add each item once (no duplicate/spam). Output-only.
 - [x] Guard: empty/garbage response → throw (fail-fast). Empty checked in both `generateText()` and the step;
       output clamped to 1200 chars.
 - [ ] Unit test with a mocked Gemini response. — **deferred** (user: manual endpoint testing first; decide on
@@ -415,4 +422,39 @@ shape stable. ⚠️ Still TODO: rotate the Upstash dev token; set `AMAZON_AFFIL
 - **Working-agreement update**: user runs builds/servers/manual tests **themselves** — hand over the
   commands + a checklist, don't invoke `pnpm build:api`/`dev:*` (saved to working-style memory).
 
-**▶ Resume next session at: discuss commit + choose next phase (B3 hardening or frontend F0).**
+**▶ B2 committed & pushed at `778cb6a`.** Next chosen: **frontend F0** (after the Model 1 tweak below).
+
+### 2026-07-01 (cont. 2) — Model 1 upgraded to VISION (space-aware products + scene preservation)
+- **Problem:** Model 1 was text-only (never saw the image) with an "interior/furniture" system prompt, so
+  a garden/terrace photo got indoor suggestions (sofa, fireplace). Root cause: blind model can't know the
+  space. Decision (user): make Model 1 **vision-aware** (not just reword).
+- **`ai/gemini.ts`**: `generateFromImage` `responseSchema` now **optional** — with schema = JSON (Model 3,
+  unchanged); without = free text (Model 1). One conditional in the `config` block; Model 3 path untouched.
+- **`steps/enhancePrompt.ts`**: input `string` → `{ image, mimeType, prompt }`; calls `generateFromImage`
+  (no schema). **System prompt rewritten**: identify space from image → context-appropriate products only;
+  **do not change existing background/scene**; **integrate items naturally into the scene** (scale/
+  perspective/grounded shadows, not foreground paste); one of each item, no spam.
+- **`runner.ts`**: step 1 now receives `data.image`/`data.mimeType`; header comment notes vision. No
+  contract / GET change. **Vision confirmed working** (garden/terrace → space-appropriate products).
+
+### 2026-07-01 (cont. 3) — Model 1 prompt tuning (preservation-first, then more items)
+- **Iterated the Model 1 system prompt in `steps/enhancePrompt.ts`** (source of truth; user briefly edited
+  `dist/*.js` — that's build output, gets overwritten; corrected to edit `src/` only).
+- **Problem A — Kontext repainted the background.** Cause: prompt used transformation framing
+  ("transform … into"), asked for 8–15 additions / "premium restyle", and buried the one preservation
+  line. Fix: rewrote to an **ADD-ONLY, preservation-first** instruction — bans "transform/redesign/
+  makeover", caps items, and **forces the output to end with** `"Keep the rest of the original image
+  exactly as it is, unchanged."` (Kontext only sees Model 1's output, so the clause must live there).
+  **Result: background now preserved.** ✅
+- **Problem B — too few items rendered (1–2).** Cause: Kontext's per-pass edit budget + a discrete
+  "Add X. Add Y." checklist (it applies the first, drops the rest). Fix (user chose **prompt-tweak first**
+  over multi-pass): bumped requested items **3–6 → 5–8** and switched output style to **one cohesive
+  furnishing paragraph** (weave items together, not a checklist). Raised `MAX_ENHANCED_LENGTH` **1200 →
+  2000** so the trailing preservation clause is never truncated. **Pending user verify** (expect more
+  items placed; background still intact).
+- ⚠️ Known ceiling: Kontext renders only a handful of additions per pass. If 5–8 isn't enough after
+  testing, next lever is **multi-pass editing** (loop `editImage` 2–3×, feed output back) — deferred.
+
+**▶ Resume next session at: FRONTEND F0** — Expo (TS) scaffold, import `@clickretina/contract`, base
+navigation, API base-URL env config. Backend B2 is complete (Model 1 vision + prompt tuning may need one
+more verify pass). Deferred backend: B3 hardening + per-step unit tests (no test runner yet).
