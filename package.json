@@ -9,6 +9,7 @@
     "dev:worker": "pnpm --filter @clickretina/api worker",
     "build:api": "pnpm --filter @clickretina/api build",
     "start:api": "pnpm --filter @clickretina/api start",
-    "start:worker": "pnpm --filter @clickretina/api start:worker"
+    "start:worker": "pnpm --filter @clickretina/api start:worker",
+    "dev:mobile": "pnpm --filter @clickretina/mobile start"
   }
 }

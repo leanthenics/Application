@@ -40,17 +40,19 @@ Goal: production-readiness for an MVP.
 
 ## Frontend phases (after B1 contract is stable)
 
-### F0 — Expo scaffold + contract import
-- Expo TS app, import `packages/contract`, base navigation, env config (API base URL).
+### F0 — Expo scaffold + contract import — ✅ DONE (2026-07-01)
+- Expo **SDK 57** TS app (`apps/mobile`), imports `@clickretina/contract`, top-tab nav via
+  **`expo-router/ui`** (SDK 56+ dropped React Navigation compat), `EXPO_PUBLIC_API_BASE_URL` env config.
 
-### F1 — Capture & submit
-- Pick/take photo, **resize to 768px + JPEG compress**, base64 encode, enter prompt, `POST /jobs`.
+### F1 — Capture & submit — ✅ DONE (2026-07-01)
+- Pick/take photo (bottom sheet), **resize to 768px + JPEG compress** via `ImageManipulator.manipulate`,
+  base64 encode, enter prompt, `POST /jobs`. Verified live in Expo Go (backend receiving requests).
 
-### F2 — Poll & result
-- Poll `GET /jobs/:id`, loading/processing UI, result screen (edited image + tappable Amazon
-  product links), error states.
+### F2 — Poll & result — ✅ DONE (2026-07-01)
+- Results grid + single 2.5s poller (`GET /jobs/:id`), per-tile loading/processing/failed UI, detail
+  screen (edited image + tappable Amazon product links), error states. Zustand store, in-memory.
 
-### F3 — Polish
+### F3 — Polish  ← **NEXT (with backend B3), deferred to 2026-07-02**
 - Empty/error/retry UX, basic styling, deep-link to Amazon, simple history (in-memory).
 
 ## Sequencing

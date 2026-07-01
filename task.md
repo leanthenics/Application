@@ -2,12 +2,16 @@
 
 > Full backend workflow, divided into sequential, checkable steps so we can design and verify one
 > step at a time. See `architecture.md` for decisions/contract and `plan.md` for the roadmap.
-> Frontend is out of scope for now.
+> Frontend phases (F0–F3) are tracked in `plan.md`; **F0–F2 are DONE (2026-07-01)** — see the frontend
+> session-log entry at the bottom. Only F3 (polish) remains.
 >
 > **Update this file as we go** — flip the box and add notes when a task is done.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
-**Current focus:** **NEXT UP → FRONTEND F0** (Expo scaffold). **Backend B2 is COMPLETE** and the full
+**Current focus:** **NEXT UP → FRONTEND F3 (polish) + backend B3 (hardening)** — both deferred to next
+session (2026-07-02). **Frontend F0–F2 are COMPLETE** (Expo SDK 57: top-tab nav via `expo-router/ui`,
+capture+resize+submit, results grid + 2.5s poller + detail with Amazon links — verified live in Expo Go).
+**Backend B2 is COMPLETE** and the full
 pipeline runs end-to-end — `enhancePrompt(vision) → editImage(Kontext) → extractKeyterms → Amazon URLs →
 completed` with real data (edited image + up to 5 real product keyterms + affiliate links). Shipped across
 B2: transient-retry net (429/503), GET read-skew fix, env-swappable Model 2 provider (Qwen | **Kontext
@@ -458,3 +462,28 @@ shape stable. ⚠️ Still TODO: rotate the Upstash dev token; set `AMAZON_AFFIL
 **▶ Resume next session at: FRONTEND F0** — Expo (TS) scaffold, import `@clickretina/contract`, base
 navigation, API base-URL env config. Backend B2 is complete (Model 1 vision + prompt tuning may need one
 more verify pass). Deferred backend: B3 hardening + per-step unit tests (no test runner yet).
+
+### 2026-07-01 (cont. 5) — FRONTEND F0–F2 (Expo app) — verified live in Expo Go
+- **F0 scaffold + wiring**: `apps/mobile` via `create-expo-app` (**Expo SDK 57**, RN 0.86, react 19.2,
+  expo-router; routes under **`src/app/`**). Renamed `@clickretina/mobile`, imports `@clickretina/contract`
+  (`workspace:*`). **No `metro.config.js`** — SDK 52+ auto-configures monorepo Metro (pnpm isolated linker
+  worked; `nodeLinker: hoisted` fallback not needed). Added `expo-env.d.ts`, `.env.example`, root
+  `dev:mobile` script, camera/photo permission strings in `app.json`.
+  - **⚠️ SDK 56+ breaking change**: expo-router dropped React Navigation compat — the
+    `withLayoutContext(createMaterialTopTabNavigator())` pattern throws. Rebuilt the **TOP** tab bar
+    (Home | Results) with **`expo-router/ui`** (`Tabs`/`TabList`/`TabTrigger`/`TabSlot`, `TabList` before
+    `TabSlot` = top). Removed `@react-navigation/material-top-tabs` + `react-native-pager-view`.
+- **F1 capture & submit** (`src/app/(tabs)/index.tsx`): image card → `image-source-sheet.tsx` bottom sheet
+  (Camera/Gallery) → picked image covers card + pencil to change → prompt + `→` button. `src/lib/image.ts`
+  uses new SDK 57 APIs: `expo-image-picker` (`mediaTypes:['images']`) + `ImageManipulator.manipulate(uri)
+  .resize({width:768}).renderAsync().saveAsync({JPEG, base64})`. Submit → `createJob` → `addJob` → go to
+  Results. Icons via `@expo/vector-icons`.
+- **F2 grid + poller + detail**: `store/jobs.ts` (**Zustand v5**), `api/client.ts` (`createJob`/`getJob`,
+  contract-validated, typed `ApiError`), `hooks/use-job-poller.ts` (one 2.5s interval in root layout, polls
+  non-terminal jobs, 404→expired), `(tabs)/results.tsx` (2-col grid, status overlays, output when done),
+  `job/[id].tsx` (spinner / client-safe error / output + Amazon products, tap → `Linking.openURL`).
+- **API base URL** = `EXPO_PUBLIC_API_BASE_URL` in `apps/mobile/.env` (emulator `http://10.0.2.2:54321`;
+  physical phone LAN IP). Android toolchain (Studio/SDK/emulator `ClickRetina_API36`) configured.
+- Contract UNCHANGED; every step typechecked clean (`tsc --noEmit`). **Left for tomorrow: F3 polish + B3.**
+
+**▶ Resume next session at: FRONTEND F3 (polish)** + backend **B3 (hardening)** — both deferred 2026-07-01.

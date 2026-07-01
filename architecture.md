@@ -6,9 +6,13 @@
 > (env-swappable with Qwen; chosen after manual A/B — **B2.7 edit-fidelity work dropped**). Failures map
 > to **client-safe messages** (raw provider detail stays in server logs). The §6 contract is codified in
 > `packages/contract` (ImageMime, CreateJob*, JobStatus, Product, JobResult, GetJobResponse; only ApiError
-> + constants deferred) and stayed stable throughout. **Next:** commit, then B3 (hardening) or frontend F0.
-> Only deferred item = per-step unit tests (no test runner yet → B3.4).
-> Dev Redis = Upstash cloud (`rediss://`). Last updated: 2026-07-01
+> + constants deferred) and stayed stable throughout.
+> **FRONTEND F0–F2 DONE (2026-07-01), verified live in Expo Go:** `apps/mobile` is an Expo **SDK 57** app —
+> top-tab nav via **`expo-router/ui`** (SDK 56+ dropped React Navigation compat), capture + resize (768px
+> JPEG) + submit, results grid + single 2.5s poller + detail screen with tappable Amazon links; **Zustand**
+> in-memory store; imports `@clickretina/contract` (contract unchanged). API base URL via
+> `EXPO_PUBLIC_API_BASE_URL`. **Next:** frontend **F3 (polish)** + backend **B3 (hardening)** + per-step
+> unit tests (no test runner yet → B3.4). Dev Redis = Upstash cloud (`rediss://`). Last updated: 2026-07-01
 
 ## 1. Product summary
 
