@@ -1,6 +1,6 @@
 import Replicate, { type FileOutput } from 'replicate';
 import { OutputImageMime } from '@clickretina/contract';
-import { config } from '../../config.js';
+import { config, type ReplicateProvider } from '../../config.js';
 import { withRetry } from './retry.js';
 
 /**
@@ -40,6 +40,46 @@ export interface EditImageResult {
   mimeType: OutputImageMime;
 }
 
+/**
+ * Build the model-specific `input` object for `replicate.run`. Qwen and FLUX
+ * Kontext accept the same *intent* (edit an image with a prompt while keeping the
+ * room's dimensions and not rewriting the prompt) but under different param
+ * names, so the shape is selected by `REPLICATE_PROVIDER`. Adding a new provider
+ * = add a case here; no other pipeline code changes.
+ *
+ * - qwen    : `image`,       `match_input_image: true`,          `enable_prompt_expansion: false`
+ * - kontext : `input_image`, `aspect_ratio: 'match_input_image'`, `prompt_upsampling: false`
+ *             (`output_format: 'png'` keeps edits lossless, matching Qwen's PNG output)
+ */
+function buildInput(
+  provider: ReplicateProvider,
+  dataUri: string,
+  prompt: string,
+): Record<string, unknown> {
+  switch (provider) {
+    case 'qwen':
+      return {
+        image: dataUri,
+        prompt,
+        match_input_image: true,
+        enable_prompt_expansion: false,
+      };
+    case 'kontext':
+      return {
+        input_image: dataUri,
+        prompt,
+        aspect_ratio: 'match_input_image',
+        prompt_upsampling: false,
+        output_format: 'png',
+      };
+    default: {
+      // Exhaustiveness guard — a new ReplicateProvider must add a case above.
+      const unknown: never = provider;
+      throw new Error(`Unsupported REPLICATE_PROVIDER: ${String(unknown)}`);
+    }
+  }
+}
+
 /** Narrow the unknown `replicate.run` output to a single FileOutput or URL string. */
 function firstOutput(out: unknown): FileOutput | string {
   const candidate = Array.isArray(out) ? out[0] : out;
@@ -61,14 +101,15 @@ function resolveMime(raw: string | undefined, fallback: OutputImageMime): Output
 }
 
 /**
- * Run the Qwen image edit with a hard timeout (`config.replicate.timeoutMs`)
- * enforced via AbortController. Returns the edited image as base64 + its real
- * content-type. `replicate.run` polls the prediction internally and rejects if
- * it ends in a failed state.
+ * Run the image edit with a hard timeout (`config.replicate.timeoutMs`) enforced
+ * via AbortController. Returns the edited image as base64 + its real content-type.
+ * `replicate.run` polls the prediction internally and rejects if it ends in a
+ * failed state.
  *
- * `match_input_image: true` keeps the (already client-resized) room's aspect
- * ratio/resolution; `enable_prompt_expansion: false` uses our enhanced prompt
- * verbatim instead of letting Qwen rewrite it a second time.
+ * The `input` shape is provider-specific (see `buildInput`) so the model can be
+ * switched between Qwen and FLUX Kontext purely via env. Both are configured to
+ * keep the (already client-resized) room's dimensions and to use our enhanced
+ * prompt verbatim rather than letting the model rewrite it a second time.
  */
 export async function editImage({ dataUri, prompt, fallbackMime }: EditImageArgs): Promise<EditImageResult> {
   const replicate = getReplicate();
@@ -79,12 +120,7 @@ export async function editImage({ dataUri, prompt, fallbackMime }: EditImageArgs
       const out = await replicate.run(
         config.replicate.model as `${string}/${string}`,
         {
-          input: {
-            image: dataUri,
-            prompt,
-            match_input_image: true,
-            enable_prompt_expansion: false,
-          },
+          input: buildInput(config.replicate.provider, dataUri, prompt),
           signal: controller.signal,
         },
       );

@@ -10,7 +10,7 @@ const RETRYABLE_STATUS = new Set([429, 503]);
 const MAX_BACKOFF_MS = 8000;
 
 /** Best-effort HTTP status from a Gemini (`ApiError.status`) or Replicate (`response.status`) error. */
-function getStatus(err: unknown): number | undefined {
+export function getStatus(err: unknown): number | undefined {
   if (typeof err !== 'object' || err === null) return undefined;
   const e = err as { status?: unknown; response?: { status?: unknown }; message?: unknown };
   if (typeof e.status === 'number') return e.status;

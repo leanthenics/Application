@@ -25,7 +25,8 @@ the contract are proven.
 ### B2 — Real AI pipeline
 Goal: replace the stub with the 3-model pipeline.
 - Model 1: Gemini Flash-Lite prompt enhancement.
-- Model 2: Replicate Qwen Image 2.0 edit (feed base64/data-uri, get edited image back).
+- Model 2: Replicate image edit (feed base64/data-uri, get edited image back). Provider is
+  env-swappable (`REPLICATE_PROVIDER` = `qwen` | `kontext`); **FLUX Kontext Pro chosen** (2026-07-01).
 - Model 3: Gemini Flash-Lite vision → up to 5 product key terms.
 - Amazon affiliate URL builder (env tld + tag, one URL per product).
 - Wire into worker with fail-fast error propagation → `failed` + message.

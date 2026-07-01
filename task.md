@@ -7,13 +7,14 @@
 > **Update this file as we go** — flip the box and add notes when a task is done.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
-**Current focus:** **B2 — real AI pipeline.** B2.0–**B2.3 all DONE & verified live (2026-06-30)**: the
-3-model pipeline runs end-to-end — `enhancePrompt → editImage → extractKeyterms → completed` with real
-data (edited image + up to 5 real product keyterms). Also shipped: a **transient-retry safety net**
-(429/503, verified catching a live Gemini 503) and a **GET-route read-skew race fix**. Only the Amazon
-URL builder is still inline-stub. **Next: B2.4 — real Amazon affiliate URL builder** (formalize/test
-`stubAmazonUrl`). **Tomorrow (2026-07-01): B2.7 edit fidelity** (preserve original room; no furniture
-spam — see below).
+**Current focus:** **B2 — real AI pipeline: COMPLETE & user-verified live (2026-07-01).** The full
+pipeline runs end-to-end — `enhancePrompt → editImage → extractKeyterms → Amazon URLs → completed` with
+real data (edited image + up to 5 real product keyterms + affiliate links). Shipped across B2: a
+**transient-retry safety net** (429/503), a **GET-route read-skew race fix**, an **env-swappable Model 2
+provider switch (Qwen | FLUX Kontext Pro — Kontext Pro chosen; B2.7 edit fidelity DROPPED)**, a real
+**Amazon URL builder** (`pipeline/amazon.ts`), and **client-safe error messages** (`pipeline/errors.ts`,
+tiered busy/timeout/generic). Contract unchanged throughout. **Next: discuss commit + B3 (hardening) /
+frontend.** Only deferred B2 items are the per-step **unit tests** (no test runner yet → B3.4).
 
 > Note: package manager is **pnpm workspaces** (v11.9.0 via corepack).
 > Env quirk: global `pnpm` shim installed into `%AppData%\npm` (npm prefix, on PATH) via
@@ -126,11 +127,18 @@ spam — see below).
 - [ ] Unit test with a mocked Gemini response. — **deferred** (user: manual endpoint testing first; decide on
       test runner after). Worker now calls `runPipeline`; stub helpers removed from `worker.ts`.
 
-### B2.2 Model 2 — Replicate Qwen Image 2.0 (image edit) — **DONE & verified live (2026-06-30)**
+### B2.2 Model 2 — Replicate image edit (Qwen | **FLUX Kontext Pro**) — **DONE & verified live (2026-06-30; provider switch 2026-07-01)**
 - [x] Replicate client + `editImage({ dataUri, prompt, fallbackMime }) → { base64, mimeType }`.
       `pipeline/ai/replicate.ts` (lazy `Replicate` singleton, throws if token/model missing).
 - [x] Feed input as **data-uri** (`data:<mime>;base64,<bytes>`); `replicate.run(model, { input })`;
-      fetch output → base64. Qwen params: `match_input_image:true`, `enable_prompt_expansion:false`.
+      fetch output → base64.
+- [x] **Env-swappable provider switch (2026-07-01)**: `buildInput(provider, dataUri, prompt)` selects the
+      per-model input shape — `qwen` (`image`, `match_input_image:true`, `enable_prompt_expansion:false`)
+      vs `kontext` (`input_image`, `aspect_ratio:'match_input_image'`, `prompt_upsampling:false`,
+      `output_format:'png'`). Set via `REPLICATE_PROVIDER` (default `qwen`) + matching `REPLICATE_MODEL`;
+      pure env swap, no code change. `config.replicate.provider` + `ReplicateProvider` type added.
+      **Kontext Pro (`black-forest-labs/flux-kontext-pro`) chosen** after manual A/B (better room
+      preservation, no furniture spam) — **user-verified working live 2026-07-01**.
 - [x] Async states + timeout: `replicate.run` polls the prediction internally (rejects on `failed`);
       hard cap via `AbortController` = `config.replicate.timeoutMs` (`REPLICATE_TIMEOUT_MS`, default 120000).
 - [x] Guard: empty/missing output → throw (`firstOutput()` + empty-base64 check).
@@ -160,30 +168,40 @@ spam — see below).
 - [x] **GET `/jobs/:id` read-skew race fix** (`routes/jobs.ts`): `getJob` snapshot taken before
       `getState()` could return `completed` with `returnvalue` still null → client saw `completed` + null
       result. Now re-reads the job once when state is terminal but result/reason is missing.
-- ℹ️ Follow-up (not done): failures surface the **raw provider JSON** in `error` — should map to a
-      **client-safe message** (architecture says so). Logged for B3 hardening.
+- ✅ Follow-up (RESOLVED 2026-07-01, in B2.5): failures no longer surface **raw provider JSON** — the
+      worker maps them to a **client-safe message** via `pipeline/errors.ts` `toClientSafeMessage`
+      (tiered busy/timeout/generic). Raw detail stays in server logs only.
 
-### B2.7 Edit fidelity — preserve original room, no furniture spam — **TODO (tomorrow, 2026-07-01)**
-> Goal: the edited image must keep the **original room/space unchanged** and only add/modify the
-> requested **furniture/decor** — and each item should appear **once (or a deliberate few), never
-> duplicated/spammed** across the scene.
-- [ ] Diagnose current behaviour (Qwen sometimes reshapes the room or repeats items).
-- [ ] Tighten Model 1 enhancement prompt (explicit "preserve walls/windows/perspective"; "place exactly
-      one <item>"; "do not duplicate or tile furniture").
-- [ ] Tune Model 2 (`editImage`) inputs: consider `negative_prompt` (e.g. "duplicate, repeated, extra,
-      cloned furniture, distorted room"); revisit `match_input_image`/strength/guidance if exposed.
-- [ ] Evaluate masked/region edit (inpainting) if prompt-only control is insufficient.
-- [ ] Manual A/B on sample images; keep the `JobResult` contract unchanged.
+### B2.7 Edit fidelity — preserve original room, no furniture spam — **DROPPED (2026-07-01)**
+> **Resolved by model choice, not by prompt/inpainting tuning.** Switching Model 2 to **FLUX Kontext
+> Pro** (B2.2 provider switch) preserves the original room and avoids duplicated/spammed furniture well
+> enough on manual A/B that no dedicated fidelity work is needed. If a future model regresses on this,
+> revisit the ideas below (tighten Model 1 prompt; add a `negative_prompt`; masked/region inpainting).
+- [~] ~~Diagnose current behaviour (model sometimes reshapes the room or repeats items).~~ — Kontext Pro
+      does not exhibit this on tested samples.
+- [~] ~~Tighten Model 1 enhancement prompt / add negative_prompt / evaluate inpainting.~~ — not needed.
+- [x] Manual A/B on sample images (Qwen vs Kontext Pro) — **Kontext Pro chosen; `JobResult` unchanged.**
 
-### B2.4 Amazon affiliate URL builder
-- [ ] `buildAmazonUrl(keyterm) → url` using `AMAZON_TLD` + `AMAZON_AFFILIATE_TAG`.
-- [ ] URL-encode keyterm; map each keyterm → `Product { keyterm, amazonUrl }`.
-- [ ] Unit test for encoding + tag/tld composition.
+### B2.4 Amazon affiliate URL builder — **DONE & user-verified live (2026-07-01)**
+- [x] `buildAmazonUrl(keyterm) → url` using `AMAZON_TLD` + `AMAZON_AFFILIATE_TAG`. Extracted from the
+      inline `stubAmazonUrl` into its own module `pipeline/amazon.ts` (real B2.4 builder; same URL shape).
+- [x] URL-encode keyterm; map each keyterm → `Product { keyterm, amazonUrl }`. `runner.ts` step 4 now
+      imports `buildAmazonUrl` (inline stub removed); output byte-identical.
+- [~] Unit test for encoding + tag/tld composition. — **deferred** (no test runner yet; user chose
+      extract-module-only, decide runner in B3.4).
 
 ### B2.5 Wire pipeline into worker
-- [ ] Replace stub: Model 1 → 2 → 3 → URL builder, producing `PipelineOut`.
-- [ ] Fail-fast: any step throws → job `failed` with a client-safe message.
-- [ ] End-to-end manual run with a real sample image → completed result.
+- [x] Replace stub: Model 1 → 2 → 3 → URL builder, producing `PipelineOut`. `runner.ts` composes all
+      three real steps + the (still inline) Amazon URL builder → `JobResult`.
+- [x] Fail-fast: any step throws → job `failed` with a **client-safe message**. `pipeline/errors.ts`
+      `toClientSafeMessage(err)` (tiered: 429/503 → "busy, try again"; `AbortError`/timeout → "took too
+      long"; else generic — deliberately NOT per-stage, so the client never learns which model failed).
+      `worker.ts` logs the raw error server-side then rethrows the sanitized message → BullMQ stores it as
+      `failedReason`. `getStatus` exported from `ai/retry.ts` and reused. **User-verified live 2026-07-01**
+      (generic + timeout tiers confirmed via Postman; raw detail stays in worker logs only).
+- [x] End-to-end manual run with a real sample image → completed result. **User-verified live 2026-07-01
+      for BOTH providers** (Qwen and FLUX Kontext Pro) — pipeline runs green end-to-end. (Runtime-verified
+      via `dev:worker`/tsx; a strict `pnpm build:api` typecheck is still worth doing at the next code touch.)
 
 ---
 
@@ -362,7 +380,39 @@ shape stable. ⚠️ Still TODO: rotate the Upstash dev token; set `AMAZON_AFFIL
 - ⚠️ Open follow-up: map model failures to a **client-safe error message** (raw provider JSON currently
   leaks into GET `error`) — B3 hardening.
 
-**▶ Resume next session at: B2.4** — real Amazon affiliate URL builder (formalize/test `stubAmazonUrl`
-in `runner.ts` → its own module using `AMAZON_TLD`/`AMAZON_AFFILIATE_TAG`, URL-encode keyterm). Then
-**B2.7 (tomorrow): edit fidelity** — keep the original room unchanged, edit only furniture, no duplicate/
-spammed items (tune Model 1 prompt + Model 2 negative_prompt; consider masked inpainting).
+**▶ B2 COMPLETE (2026-07-01).** Resume at: **discuss commit, then B3 (hardening) or frontend.**
+
+### 2026-07-01 — Model 2 provider switch (Qwen | FLUX Kontext Pro); B2.7 dropped
+- **Env-swappable Model 2 provider**: `pipeline/ai/replicate.ts` now builds the Replicate `input` via
+  `buildInput(provider, dataUri, prompt)` — `qwen` (`image` / `match_input_image` / `enable_prompt_expansion`)
+  vs `kontext` (`input_image` / `aspect_ratio:'match_input_image'` / `prompt_upsampling:false` /
+  `output_format:'png'`), with an exhaustiveness guard. `config.ts` adds `replicate.provider`
+  (`REPLICATE_PROVIDER`, default `qwen`) + exported `ReplicateProvider` type. `.env.example` documents the
+  swap. Timeout/retry/mime handling + the `editImageStep` contract all unchanged.
+- **Switching is a pure env swap** for the developer: set `REPLICATE_PROVIDER` + matching `REPLICATE_MODEL`.
+- **FLUX Kontext Pro chosen** (`black-forest-labs/flux-kontext-pro`) after manual A/B — noticeably better
+  room preservation / no furniture spam. **User verified it working live (2026-07-01).**
+- **B2.7 (edit fidelity) DROPPED** — solved by the model choice, not prompt/inpainting tuning.
+- Docs synced: `architecture.md` (tech stack, workflow, §7 config `REPLICATE_PROVIDER`, status header),
+  `task.md` (this entry, current focus, B2.2, B2.7).
+- ⚠️ Note: the provider-switch code was **not** re-run through `pnpm build:api` in-session (build was
+  skipped); user confirmed the pipeline runs. Worth a `build:api` typecheck at the next code touch.
+
+### 2026-07-01 (cont.) — B2.4 Amazon URL builder + B2.5 client-safe errors → **B2 COMPLETE**
+- **B2.4** — extracted the inline `stubAmazonUrl` into `pipeline/amazon.ts` `buildAmazonUrl(keyterm)`
+  (same URL shape, `AMAZON_TLD`/`AMAZON_AFFILIATE_TAG`, tag appended even when empty per §5). `runner.ts`
+  step 4 now imports it; output byte-identical. Unit test **deferred** (no test runner; extract-only per
+  user choice — revisit in B3.4).
+- **B2.5** — client-safe failure messages: new `pipeline/errors.ts` `toClientSafeMessage(err)`, **tiered**
+  (429/503 → "busy, try again"; `AbortError`/timeout → "took too long"; else generic), **deliberately not
+  per-stage** (user rationale: the client shouldn't learn which model failed — e.g. no-products reads the
+  same generic message). `getStatus` exported from `ai/retry.ts` and reused. `worker.ts` now try/catches
+  `runPipeline`: logs the **raw** error server-side, rethrows the **sanitized** message → BullMQ stores it
+  as `failedReason`. No contract / GET / route change. Resolves the B2.6 raw-JSON-leak follow-up.
+- **User-verified live (2026-07-01, Postman)**: happy path unchanged; generic tier (broke a credential →
+  `error` = "We couldn't process your image…", raw error only in worker log); timeout tier
+  (`GEMINI_TIMEOUT_MS=1` → "This took too long…"). B2 signed off complete.
+- **Working-agreement update**: user runs builds/servers/manual tests **themselves** — hand over the
+  commands + a checklist, don't invoke `pnpm build:api`/`dev:*` (saved to working-style memory).
+
+**▶ Resume next session at: discuss commit + choose next phase (B3 hardening or frontend F0).**

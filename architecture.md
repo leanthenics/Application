@@ -1,11 +1,14 @@
 # ClickRetina — Architecture
 
-> Status: **B1 complete & verified on Upstash Redis**; next is **B2 (real AI pipeline)**. Full lifecycle
-> works: `POST /jobs` → BullMQ worker → `GET /jobs/:id` returns a contract-typed `JobResult` (currently a
-> clearly-marked **template** stub — B2 fills real data into the same shape). The §6 contract is now
-> codified in `packages/contract` (ImageMime, CreateJob*, JobStatus, Product, JobResult, GetJobResponse;
-> only ApiError + constants deferred) and must stay stable as the stub → real pipeline.
-> Dev Redis = Upstash cloud (`rediss://`). Last updated: 2026-06-30
+> Status: **B2 COMPLETE & user-verified live.** `POST /jobs` → BullMQ worker (`enhancePrompt →
+> editImage → extractKeyterms → Amazon URLs`) → `GET /jobs/:id` returns a contract-typed `JobResult`
+> with a real edited image + real product keyterms + affiliate links. **Model 2 = FLUX Kontext Pro**
+> (env-swappable with Qwen; chosen after manual A/B — **B2.7 edit-fidelity work dropped**). Failures map
+> to **client-safe messages** (raw provider detail stays in server logs). The §6 contract is codified in
+> `packages/contract` (ImageMime, CreateJob*, JobStatus, Product, JobResult, GetJobResponse; only ApiError
+> + constants deferred) and stayed stable throughout. **Next:** commit, then B3 (hardening) or frontend F0.
+> Only deferred item = per-step unit tests (no test runner yet → B3.4).
+> Dev Redis = Upstash cloud (`rediss://`). Last updated: 2026-07-01
 
 ## 1. Product summary
 
@@ -23,11 +26,18 @@ user can shop the look.
 | Queue        | BullMQ (Redis-backed)                                              |
 | Shared types | Zod schemas in `packages/contract` — single source of truth for the API |
 | AI – Model 1 | Gemini Flash-Lite — prompt enhancement (text → text)              |
-| AI – Model 2 | Qwen Image 2.0 via **Replicate** — image edit (image + prompt → image) |
+| AI – Model 2 | **FLUX Kontext Pro** via **Replicate** — image edit (image + prompt → image) |
 | AI – Model 3 | Gemini Flash-Lite (vision) — product key-term extraction (image → terms) |
 
 > Exact model IDs/versions are env-configurable (`GEMINI_MODEL`, `REPLICATE_MODEL`). Pin exact
 > versions at implementation time.
+>
+> **Model 2 provider is env-swappable** (`REPLICATE_PROVIDER` = `qwen` | `kontext`, default `qwen`).
+> Each provider selects the correct Replicate input param shape in `pipeline/ai/replicate.ts`
+> (`buildInput`); switching is a pure env swap (`REPLICATE_PROVIDER` + `REPLICATE_MODEL`), no code
+> change. **FLUX Kontext Pro (`black-forest-labs/flux-kontext-pro`) is the current choice** — chosen
+> over Qwen 2.0 after manual A/B testing: it preserves the original room and avoids duplicated/spammed
+> furniture markedly better (this is why the planned B2.7 "edit fidelity" work was dropped, 2026-07-01).
 
 ## 3. Monorepo layout (pnpm workspaces)
 
@@ -51,7 +61,7 @@ API  ── zod-validate ── enqueue BullMQ job ── 202 { jobId }   (retur
         │
    BullMQ Worker (fail-fast, no retries):
    ├─ Model 1  Gemini Flash-Lite      : prompt                  -> enhancedPrompt
-   ├─ Model 2  Qwen 2.0 (Replicate)   : inputImage + enhancedPrompt -> editedImage
+   ├─ Model 2  Kontext (Replicate)    : inputImage + enhancedPrompt -> editedImage
    ├─ Model 3  Gemini Flash-Lite (vis): editedImage             -> [keyterms] (max 5)
    └─ Amazon link builder             : keyterm -> affiliate search URL (one per product)
         │
@@ -128,7 +138,8 @@ BullMQ state → `JobStatus` mapping: `waiting/delayed` → `queued`, `active` �
 | `GEMINI_API_KEY`        | Gemini (models 1 & 3)                      |
 | `GEMINI_MODEL`          | Gemini model id                           |
 | `REPLICATE_API_TOKEN`   | Replicate auth (model 2)                   |
-| `REPLICATE_MODEL`       | Qwen image model id/version               |
+| `REPLICATE_PROVIDER`    | Model 2 input shape: `qwen` \| `kontext` (default `qwen`) |
+| `REPLICATE_MODEL`       | Image-edit model id/version (matches the provider) |
 | `AMAZON_TLD`            | Amazon domain suffix (default `in`)       |
 | `AMAZON_AFFILIATE_TAG`  | Affiliate tag appended to search URLs     |
 | `JOB_TTL_SECONDS`       | Redis retention for finished jobs (default `600` = 10 min) |

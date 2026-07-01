@@ -1,26 +1,21 @@
 import type { JobResult, Product } from '@clickretina/contract';
-import { config } from '../config.js';
 import type { JobData } from '../jobs/shared.js';
 import type { PipelineContext } from './context.js';
 import { runStep } from './step.js';
 import { enhancePromptStep } from './steps/enhancePrompt.js';
 import { editImageStep } from './steps/editImage.js';
 import { extractKeytermsStep } from './steps/extractKeyterms.js';
+import { buildAmazonUrl } from './amazon.js';
 
 /**
  * The 3-model pipeline (architecture §4). Built one model at a time; the public
  * `JobResult` contract stays stable as stubs are replaced.
  *
- *   1. enhancePrompt   (Gemini Flash-Lite)        — REAL (B2.1)
- *   2. editImage       (Replicate Qwen Image 2.0) — REAL (B2.2)
- *   3. extractKeyterms (Gemini Flash-Lite vision) — REAL (B2.3)
- *   4. Amazon URLs     (affiliate link builder)   — TODO(B2.4): inline stub (final URL shape)
+ *   1. enhancePrompt   (Gemini Flash-Lite)          — REAL (B2.1)
+ *   2. editImage       (Replicate Qwen | Kontext)   — REAL (B2.2)
+ *   3. extractKeyterms (Gemini Flash-Lite vision)   — REAL (B2.3)
+ *   4. Amazon URLs     (affiliate link builder)     — REAL (B2.4)
  */
-
-// ── TODO(B2.4) stub: final affiliate URL shape (architecture §5 / decision 5). ──
-function stubAmazonUrl(keyterm: string): string {
-  return `https://www.amazon.${config.amazon.tld}/s?k=${encodeURIComponent(keyterm)}&tag=${encodeURIComponent(config.amazon.affiliateTag)}`;
-}
 
 export async function runPipeline(data: JobData, ctx: PipelineContext): Promise<JobResult> {
   // Step 1 — REAL: enhance the user's prompt for the image-editing model.
@@ -41,10 +36,10 @@ export async function runPipeline(data: JobData, ctx: PipelineContext): Promise<
     ctx,
   );
 
-  // Step 4 — STUB(B2.4): build the affiliate URL for each key-term (final shape).
+  // Step 4 — REAL: build the affiliate search URL for each key-term.
   const products: Product[] = keyterms.map((keyterm) => ({
     keyterm,
-    amazonUrl: stubAmazonUrl(keyterm),
+    amazonUrl: buildAmazonUrl(keyterm),
   }));
 
   return {
