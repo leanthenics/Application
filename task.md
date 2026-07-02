@@ -487,3 +487,31 @@ more verify pass). Deferred backend: B3 hardening + per-step unit tests (no test
 - Contract UNCHANGED; every step typechecked clean (`tsc --noEmit`). **Left for tomorrow: F3 polish + B3.**
 
 **▶ Resume next session at: FRONTEND F3 (polish)** + backend **B3 (hardening)** — both deferred 2026-07-01.
+
+### 2026-07-02 — Model 1 prompt tuning (more items + warmth + preservation) & Frontend F3 (retry + compare)
+- **Model 1 (`enhancePrompt.ts`) prompt tuned** (all user-verified live this session):
+  - **More items**: bumped 8–10 → **12–15**; flipped the old "don't overcrowd / breathing room" line to
+    "make the space feel full, layered and lived-in"; added a category list (seating, tables, lighting,
+    planters/greenery, rugs, shade, decor accents) to give the model more to draw from.
+  - **Duplication rule made generic**: instead of "each item appears once / no repeating a category", now
+    bans only unnatural copy-paste clones but allows realistic multiples (a few chairs, several planters…).
+  - **Warmth (scoped to added items only)**: new paragraph — warm materials/tones (warm woods, rattan,
+    terracotta, amber/ochre/cream textiles) + added lamps cast a warm glow **only on/around themselves**,
+    explicitly NOT a global relight (a global "make it warmer" would recolor the background → drift).
+  - **Preservation hardened**: moved a strong CRITICAL block to the **top** naming fixed structures
+    (concrete pillars/columns/beams/railings) as immovable, AND restated it in a beefed-up closing clause
+    (replacing the old "Keep the rest… unchanged." one-liner). Paragraph length 3–5 → **5–7 sentences**;
+    `MAX_ENHANCED_LENGTH` stays 2000. **Old prompt kept commented out** as a labeled fallback (user asked).
+- **Frontend F3 items** (both in `apps/mobile/src/app/job/[id].tsx`; no backend/contract/store change):
+  - **Retry on failed** — "Try again" button on the failed detail state re-runs identical (same photo +
+    prompt via `prepareForUpload(inputThumbUri)` → `createJob`), **replaces** the old entry
+    (`addJob(new)` → `router.replace('/job/newId')` → `removeJob(old)`); the app-wide poller picks up the
+    new queued job. Handles cached-photo-gone / network errors inline. Covers real failures AND expired jobs.
+  - **Before/after compare** — drag-to-wipe `CompareSlider`: result (after) as base layer, original
+    (`inputThumbUri`, before) clipped from the left to a draggable divider (white handle + `swap-horizontal`
+    icon, starts centered, static Before/After labels). RN core **`PanResponder`** (no new dep); claims only
+    clearly-horizontal drags so vertical `ScrollView` scroll still works. Added `overflow:'hidden'` to the
+    image container. Confirmed `router.replace` + approach against Expo v57 docs per `apps/mobile/AGENTS.md`.
+- **Docs refreshed**: stale **CLAUDE.md** header/layout/commands/Model-2 (Qwen→Kontext) brought up to date.
+- ⚠️ Per standing agreement the user runs builds/tests; a `tsc --noEmit` (mobile) + `pnpm build:api` typecheck
+  are still worth a pass at the next code touch.

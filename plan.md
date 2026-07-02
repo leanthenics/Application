@@ -52,8 +52,14 @@ Goal: production-readiness for an MVP.
 - Results grid + single 2.5s poller (`GET /jobs/:id`), per-tile loading/processing/failed UI, detail
   screen (edited image + tappable Amazon product links), error states. Zustand store, in-memory.
 
-### F3 — Polish  ← **NEXT (with backend B3), deferred to 2026-07-02**
+### F3 — Polish  ← **IN PROGRESS (with backend B3)**
 - Empty/error/retry UX, basic styling, deep-link to Amazon, simple history (in-memory).
+- **Done (2026-07-02):** (1) **Retry on failed** — "Try again" button on the failed detail screen
+  re-runs identical (same photo + prompt), replacing the old entry (`addJob(new)` → `router.replace` →
+  `removeJob(old)`); covers both real failures and expired jobs. (2) **Before/after compare** — drag-to-wipe
+  `CompareSlider` on the completed detail screen (result base layer + original clipped to a draggable
+  divider; RN `PanResponder`, horizontal-only so vertical scroll still works). Both in `job/[id].tsx`.
+- **Remaining:** styling pass, Amazon deep-link robustness, grid pull-to-refresh / clear-completed.
 
 ## Sequencing
 
