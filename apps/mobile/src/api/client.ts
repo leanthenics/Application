@@ -53,3 +53,48 @@ export async function getJob(id: string): Promise<GetJobResponse> {
   if (!res.ok) await throwApiError(res);
   return GetJobResponse.parse(await res.json());
 }
+
+/** A landing-page showcase card: static before/after images + shoppable products. */
+export type ShowcaseProduct = { keyterm: string; amazonUrl: string };
+export type ShowcaseItem = {
+  id: string;
+  title: string;
+  beforeUrl: string;
+  afterUrl: string;
+  products: ShowcaseProduct[];
+};
+
+/** Prefix a relative `/showcase/assets/...` path with the API base URL. */
+function absolutize(path: unknown): string {
+  if (typeof path !== 'string' || !path) return '';
+  if (path.startsWith('http')) return path;
+  return `${BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
+/**
+ * GET /showcase — the static before/after showcase for the landing page. The
+ * contract for this endpoint isn't promoted into @clickretina/contract yet
+ * (endpoint-first policy), so the response is validated loosely here.
+ */
+export async function getShowcase(): Promise<ShowcaseItem[]> {
+  const res = await fetch(`${BASE_URL}/showcase`, { method: 'GET' });
+  if (!res.ok) await throwApiError(res);
+  const body = (await res.json()) as { items?: unknown };
+  const items = Array.isArray(body.items) ? body.items : [];
+  return items
+    .map((raw): ShowcaseItem => {
+      const it = raw as Record<string, unknown>;
+      const products = Array.isArray(it.products) ? it.products : [];
+      return {
+        id: String(it.id ?? ''),
+        title: typeof it.title === 'string' ? it.title : '',
+        beforeUrl: absolutize(it.beforeUrl),
+        afterUrl: absolutize(it.afterUrl),
+        products: products.map((p) => {
+          const prod = p as Record<string, unknown>;
+          return { keyterm: String(prod.keyterm ?? ''), amazonUrl: String(prod.amazonUrl ?? '') };
+        }),
+      };
+    })
+    .filter((it) => it.beforeUrl && it.afterUrl);
+}

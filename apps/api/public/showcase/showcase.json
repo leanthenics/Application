@@ -1,0 +1,38 @@
+[
+  {
+    "id": "Terrace",
+    "title": "Outside rooftop",
+    "before": "SHOWCASE1INPT.jpeg",
+    "after": "SHOWCASEIMG1OUT.webp",
+    "keyterms": [
+      "Concrete plant pots",
+      "Floor warm lights",
+      "Hanging pot plant ",
+      "Outdoor Sofa set white"
+    ]
+  },
+  {
+    "id": "balcony",
+    "title": "Cozy balcony",
+    "before": "balcony-before.png",
+    "after": "balcony-after.png",
+    "keyterms": [
+      "outdoor rope lounge chair",
+      "warm white string lights",
+      "teak side table",
+      "potted olive tree"
+    ]
+  },
+  {
+    "id": "bedroom",
+    "title": "Serene bedroom",
+    "before": "bedroom-before.png",
+    "after": "bedroom-after.png",
+    "keyterms": [
+      "upholstered linen headboard",
+      "rattan pendant light",
+      "bedside table lamp",
+      "textured throw blanket"
+    ]
+  }
+]

@@ -33,6 +33,9 @@ export default function TabsLayout() {
           <TabTrigger name="home" href="/" asChild>
             <TabButton label="Home" />
           </TabTrigger>
+          <TabTrigger name="create" href="/create" asChild>
+            <TabButton label="Create" />
+          </TabTrigger>
           <TabTrigger name="results" href="/results" asChild>
             <TabButton label="Results" />
           </TabTrigger>

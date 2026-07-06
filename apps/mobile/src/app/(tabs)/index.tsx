@@ -1,192 +1,287 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Image } from 'expo-image';
-import { useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { ImageSourceSheet } from '@/components/image-source-sheet';
-import { createJob } from '@/api/client';
-import { pickFromCamera, pickFromLibrary, prepareForUpload } from '@/lib/image';
-import { useJobsStore } from '@/store/jobs';
+import { getShowcase, type ShowcaseItem } from '@/api/client';
+import { CompareSlider } from '@/components/compare-slider';
+import { ProductRow } from '@/components/product-row';
 
-export default function HomeScreen() {
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+type StepInfo = { icon: keyof typeof Ionicons.glyphMap; title: string; body: string };
+
+const STEPS: StepInfo[] = [
+  {
+    icon: 'camera-outline',
+    title: 'Click it',
+    body: 'Snap or upload a photo of any room or space you want to transform.',
+  },
+  {
+    icon: 'sparkles-outline',
+    title: 'Design it',
+    body: 'Describe your vision and our AI restyles the space with new furniture and decor.',
+  },
+  {
+    icon: 'cart-outline',
+    title: 'Visualize it',
+    body: 'See the before / after and shop every product with a single tap.',
+  },
+];
+
+export default function LandingScreen() {
+  const [items, setItems] = useState<ShowcaseItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sheetVisible, setSheetVisible] = useState(false);
-  const addJob = useJobsStore((s) => s.addJob);
+  const { height } = useWindowDimensions();
+  const heroMinHeight = Math.round(height * 0.5);
 
-  const canSubmit = !!imageUri && prompt.trim().length > 0 && !submitting;
-
-  async function onCamera() {
-    setSheetVisible(false);
+  const load = useCallback(async () => {
+    setLoading(true);
     setError(null);
     try {
-      const picked = await pickFromCamera();
-      if (picked) setImageUri(picked.uri);
+      setItems(await getShowcase());
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not open the camera.');
-    }
-  }
-
-  async function onGallery() {
-    setSheetVisible(false);
-    setError(null);
-    try {
-      const picked = await pickFromLibrary();
-      if (picked) setImageUri(picked.uri);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not open the gallery.');
-    }
-  }
-
-  async function onSubmit() {
-    if (!imageUri || prompt.trim().length === 0) return;
-    setError(null);
-    setSubmitting(true);
-    try {
-      const { base64, mimeType } = await prepareForUpload(imageUri);
-      const { jobId } = await createJob({ image: base64, mimeType, prompt: prompt.trim() });
-      addJob({
-        jobId,
-        inputThumbUri: imageUri,
-        prompt: prompt.trim(),
-        status: 'queued',
-        result: null,
-        error: null,
-        createdAt: Date.now(),
-      });
-      setImageUri(null);
-      setPrompt('');
-      router.navigate('/results');
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : 'Could not submit. Check your connection and API URL.',
-      );
+      setError(e instanceof Error ? e.message : 'Could not load examples.');
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.heading}>Restyle your space</Text>
+    <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
+      {/* Hero — occupies ~half the first screen */}
+      <View style={[styles.hero, { minHeight: heroMinHeight }]}>
+        <Text style={styles.title}>ClickRetina</Text>
+        <Text style={styles.tagline}>
+          Visualize your dream space — snap a photo, restyle it with AI, and shop the look.
+        </Text>
 
-        <View style={styles.card}>
-          {imageUri ? (
-            <>
-              <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              <Pressable
-                style={styles.editBtn}
-                onPress={() => setSheetVisible(true)}
-                hitSlop={10}
-                accessibilityLabel="Change photo">
-                <Ionicons name="pencil" size={18} color="#fff" />
-              </Pressable>
-            </>
-          ) : (
-            <Pressable style={styles.picker} onPress={() => setSheetVisible(true)}>
-              <Ionicons name="image-outline" size={52} color="#208AEF" />
-              <Text style={styles.pickerText}>Add a photo of your room</Text>
-            </Pressable>
-          )}
+        <Pressable
+          style={styles.cta}
+          onPress={() => router.navigate('/create')}
+          accessibilityLabel="Get started">
+          <Ionicons name="camera" size={20} color="#fff" />
+          <Text style={styles.ctaText}>Get started</Text>
+        </Pressable>
+      </View>
+
+      {/* Showcase */}
+      <Text style={styles.sectionHeading}>See it in action</Text>
+      {loading ? (
+        <View style={styles.skeletonWrap}>
+          <ShowcaseSkeleton />
+          <ShowcaseSkeleton />
         </View>
-
-        <View style={styles.promptRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="Describe the changes you want…"
-            placeholderTextColor="#8E8E93"
-            value={prompt}
-            onChangeText={setPrompt}
-            maxLength={2000}
-            multiline
-          />
-          <Pressable
-            style={[styles.arrowBtn, !canSubmit && styles.arrowBtnDisabled]}
-            onPress={onSubmit}
-            disabled={!canSubmit}
-            accessibilityLabel="Generate">
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Ionicons name="arrow-forward" size={24} color="#fff" />
-            )}
+      ) : error ? (
+        <View style={styles.stateBox}>
+          <Text style={styles.muted}>{error}</Text>
+          <Pressable style={styles.retry} onPress={load}>
+            <Ionicons name="refresh" size={16} color="#208AEF" />
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
+      ) : items.length === 0 ? (
+        <View style={styles.stateBox}>
+          <Text style={styles.muted}>Examples coming soon.</Text>
+        </View>
+      ) : (
+        items.map((item) => <ShowcaseCard key={item.id} item={item} />)
+      )}
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </ScrollView>
+      {/* How it works — centered timeline linked by dotted connectors */}
+      <Text style={styles.sectionHeading}>How it works</Text>
+      <View style={styles.timeline}>
+        {STEPS.map((step, i) => (
+          <Fragment key={step.title}>
+            <View style={styles.step}>
+              <View style={styles.stepBadge}>
+                <Ionicons name={step.icon} size={34} color="#208AEF" />
+              </View>
+              <Text style={styles.stepTitle}>{step.title}</Text>
+              <Text style={styles.stepBody}>{step.body}</Text>
+            </View>
+            {i < STEPS.length - 1 ? <DottedConnector /> : null}
+          </Fragment>
+        ))}
+      </View>
 
-      <ImageSourceSheet
-        visible={sheetVisible}
-        onClose={() => setSheetVisible(false)}
-        onCamera={onCamera}
-        onGallery={onGallery}
+      {/* Footer bar (intentionally empty for now) */}
+      <View style={styles.bottomBar} />
+    </ScrollView>
+  );
+}
+
+/**
+ * One showcase example. The product list stays hidden until the user first
+ * interacts with the before/after slider (tap or slide), then expands beneath
+ * the image — pushing the rest of the page down.
+ */
+function ShowcaseCard({ item }: { item: ShowcaseItem }) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <View style={styles.showcaseCard}>
+      {item.title ? <Text style={styles.showcaseTitle}>{item.title}</Text> : null}
+      <CompareSlider
+        beforeUri={item.beforeUrl}
+        afterUri={item.afterUrl}
+        onInteract={() => setRevealed(true)}
       />
-    </KeyboardAvoidingView>
+      {revealed ? (
+        <View style={styles.showcaseProducts}>
+          <Text style={styles.shopLabel}>Shop the look</Text>
+          {item.products.map((p, i) => (
+            <ProductRow key={`${p.keyterm}-${i}`} product={p} />
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.showcaseHint}>Slide or tap to compare and shop the look</Text>
+      )}
+    </View>
+  );
+}
+
+/**
+ * Placeholder shadow card shown while the showcase loads from the server — a
+ * gently pulsing image block + two text lines, so the section has structure
+ * instead of a bare spinner on a white screen.
+ */
+function ShowcaseSkeleton() {
+  const opacity = useRef(new Animated.Value(0.5)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.5, duration: 700, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return (
+    <View style={styles.showcaseCard}>
+      <Animated.View style={[styles.skeletonImage, { opacity }]} />
+      <Animated.View style={[styles.skeletonLineWide, { opacity }]} />
+      <Animated.View style={[styles.skeletonLine, { opacity }]} />
+    </View>
+  );
+}
+
+/** A short vertical dotted line linking two steps on the timeline. */
+function DottedConnector() {
+  return (
+    <View style={styles.connector}>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <View key={i} style={styles.connectorDot} />
+      ))}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { padding: 16, gap: 16 },
-  heading: { fontSize: 22, fontWeight: '700', color: '#000', marginTop: 4 },
-  card: {
-    width: '100%',
-    aspectRatio: 4 / 3,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#F0F0F3',
-  },
-  picker: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  pickerText: { fontSize: 15, color: '#8E8E93', fontWeight: '500' },
-  editBtn: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
+  flex: { flex: 1, backgroundColor: '#F5F6F8' },
+  container: { padding: 16, gap: 14 },
+  hero: {
     justifyContent: 'center',
+    gap: 18,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 32,
+    marginHorizontal: -16, // full-bleed despite the container padding
+    marginTop: -16,
+    backgroundColor: '#EAF3FE',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  promptRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-  input: {
-    flex: 1,
-    minHeight: 48,
-    maxHeight: 140,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 12,
+  title: { fontSize: 34, fontWeight: '800', color: '#000', textAlign: 'center' },
+  tagline: {
     fontSize: 16,
-    color: '#000',
+    lineHeight: 22,
+    color: '#3A3A3C',
+    textAlign: 'center',
+    alignSelf: 'center',
+    maxWidth: 320,
   },
-  arrowBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  cta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#208AEF',
+  },
+  ctaText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  sectionHeading: { fontSize: 20, fontWeight: '700', color: '#000', marginTop: 8, textAlign: 'center' },
+  stateBox: { alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 28 },
+  muted: { fontSize: 15, color: '#8E8E93', textAlign: 'center' },
+  retry: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  retryText: { color: '#208AEF', fontSize: 15, fontWeight: '600' },
+  skeletonWrap: { gap: 14 },
+  showcaseCard: {
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  skeletonImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    backgroundColor: '#E3E6EA',
+  },
+  skeletonLineWide: {
+    height: 14,
+    width: '70%',
+    borderRadius: 7,
+    backgroundColor: '#E3E6EA',
+    alignSelf: 'center',
+    marginTop: 4,
+  },
+  skeletonLine: {
+    height: 12,
+    width: '45%',
+    borderRadius: 6,
+    backgroundColor: '#E3E6EA',
+    alignSelf: 'center',
+  },
+  showcaseTitle: { fontSize: 16, fontWeight: '600', color: '#000', textAlign: 'center' },
+  showcaseHint: { fontSize: 13, color: '#8E8E93', textAlign: 'center' },
+  showcaseProducts: { gap: 10, marginTop: 2 },
+  shopLabel: { fontSize: 16, fontWeight: '700', color: '#000', textAlign: 'center' },
+  timeline: { alignItems: 'center', marginTop: 4 },
+  step: { alignItems: 'center', gap: 8, maxWidth: 300 },
+  stepBadge: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: '#EAF3FE',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  arrowBtnDisabled: { backgroundColor: '#B7D6F7' },
-  error: { color: '#FF3B30', fontSize: 14 },
+  stepTitle: { fontSize: 18, fontWeight: '700', color: '#000', textAlign: 'center' },
+  stepBody: { fontSize: 14, lineHeight: 20, color: '#6C6C70', textAlign: 'center' },
+  connector: { alignItems: 'center', gap: 5, paddingVertical: 12 },
+  connectorDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#B7D0EC' },
+  bottomBar: {
+    height: 64,
+    marginTop: 16,
+    marginHorizontal: -16, // bleed to screen edges despite the container padding
+    marginBottom: -16,
+    backgroundColor: '#000',
+  },
 });

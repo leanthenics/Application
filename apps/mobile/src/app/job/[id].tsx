@@ -1,20 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Linking,
-  PanResponder,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import type { LayoutChangeEvent } from 'react-native';
-import type { Product } from '@clickretina/contract';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError, createJob } from '@/api/client';
+import { CompareSlider } from '@/components/compare-slider';
+import { ProductRow } from '@/components/product-row';
 import { prepareForUpload } from '@/lib/image';
 import { useJobsStore } from '@/store/jobs';
 
@@ -123,160 +114,14 @@ export default function JobDetailScreen() {
   );
 }
 
-function ProductRow({ product }: { product: Product }) {
-  async function open() {
-    try {
-      await Linking.openURL(product.amazonUrl);
-    } catch {
-      // no handler / bad url — silently ignore (polished in F3)
-    }
-  }
-  return (
-    <Pressable style={styles.productRow} onPress={open} android_ripple={{ color: '#E5E5EA' }}>
-      <Ionicons name="cart-outline" size={20} color="#208AEF" />
-      <Text style={styles.productText} numberOfLines={2}>
-        {product.keyterm}
-      </Text>
-      <Ionicons name="open-outline" size={18} color="#8E8E93" />
-    </Pressable>
-  );
-}
-
-/**
- * Before/after wipe comparison. The result (after) fills the frame; the original
- * (before) is drawn on top, clipped from the left to a draggable divider. Both use
- * contentFit="contain" in the same square frame so they overlay pixel-aligned
- * (Kontext preserves the input aspect ratio). Uses RN's core PanResponder — the
- * gesture is only claimed for clearly-horizontal drags so vertical swipes still
- * scroll the surrounding ScrollView.
- */
-function CompareSlider({ beforeUri, afterUri }: { beforeUri: string; afterUri: string }) {
-  const [width, setWidth] = useState(0);
-  const [sliderX, setSliderX] = useState(0);
-  const widthRef = useRef(0);
-  const sliderXRef = useRef(0);
-  const startX = useRef(0);
-
-  const pan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) =>
-        Math.abs(g.dx) > Math.abs(g.dy) && Math.abs(g.dx) > 4,
-      onPanResponderGrant: () => {
-        startX.current = sliderXRef.current;
-      },
-      onPanResponderMove: (_e, g) => {
-        const w = widthRef.current;
-        const x = Math.max(0, Math.min(w, startX.current + g.dx));
-        sliderXRef.current = x;
-        setSliderX(x);
-      },
-    }),
-  ).current;
-
-  function onLayout(e: LayoutChangeEvent) {
-    const w = e.nativeEvent.layout.width;
-    widthRef.current = w;
-    if (width === 0) {
-      const mid = w / 2; // start the divider centered
-      sliderXRef.current = mid;
-      setSliderX(mid);
-    }
-    setWidth(w);
-  }
-
-  return (
-    <View style={styles.output} onLayout={onLayout} {...pan.panHandlers}>
-      {/* Base layer: the result (after). */}
-      <Image source={{ uri: afterUri }} style={StyleSheet.absoluteFill} contentFit="contain" />
-
-      {/* Overlay: the original (before), revealed left of the divider. */}
-      {width > 0 ? (
-        <View style={[styles.beforeClip, { width: sliderX }]} pointerEvents="none">
-          <Image source={{ uri: beforeUri }} style={{ width, height: '100%' }} contentFit="contain" />
-        </View>
-      ) : null}
-
-      {/* Divider line + drag handle. */}
-      {width > 0 ? (
-        <View style={[styles.divider, { left: sliderX }]} pointerEvents="none">
-          <View style={styles.handle}>
-            <Ionicons name="swap-horizontal" size={18} color="#208AEF" />
-          </View>
-        </View>
-      ) : null}
-
-      {/* Static orientation labels. */}
-      <View style={[styles.compareLabel, styles.beforeLabel]} pointerEvents="none">
-        <Text style={styles.compareLabelText}>Before</Text>
-      </View>
-      <View style={[styles.compareLabel, styles.afterLabel]} pointerEvents="none">
-        <Text style={styles.compareLabelText}>After</Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { padding: 16, gap: 12 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   muted: { fontSize: 15, color: '#8E8E93', textAlign: 'center' },
   errorTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
   progressImage: { width: 200, height: 200, borderRadius: 16, backgroundColor: '#F0F0F3' },
-  output: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#000',
-  },
-  beforeClip: { position: 'absolute', top: 0, bottom: 0, left: 0, overflow: 'hidden' },
-  divider: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 2,
-    marginLeft: -1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  handle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 3,
-  },
-  compareLabel: {
-    position: 'absolute',
-    top: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  beforeLabel: { left: 10 },
-  afterLabel: { right: 10 },
-  compareLabelText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   compareHint: { fontSize: 13, color: '#8E8E93', textAlign: 'center' },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000', marginTop: 4 },
-  productRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
-  },
-  productText: { flex: 1, fontSize: 16, color: '#000' },
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',

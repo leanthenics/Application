@@ -31,7 +31,7 @@ export default function ResultsScreen() {
       <View style={styles.empty}>
         <Ionicons name="images-outline" size={48} color="#C7C7CC" />
         <Text style={styles.emptyText}>No generations yet.</Text>
-        <Text style={styles.emptySub}>Create one from the Home tab.</Text>
+        <Text style={styles.emptySub}>Create one from the Create tab.</Text>
       </View>
     );
   }

@@ -2,12 +2,16 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import cors from 'cors';
 import { config } from './config.js';
 import { jobsRouter } from './routes/jobs.js';
+import { showcaseRouter, showcaseDir } from './routes/showcase.js';
 import { apiError } from './http/errors.js';
 
 const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: config.maxBodySize }));
+
+// Static before/after images for the landing-page showcase (see routes/showcase.ts).
+app.use('/showcase/assets', express.static(showcaseDir));
 
 app.get('/health', (_req, res) => {
   res.json({
@@ -19,6 +23,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use(jobsRouter);
+app.use(showcaseRouter);
 
 // 404 fallback
 app.use((_req, res) => {

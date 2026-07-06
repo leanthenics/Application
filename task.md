@@ -537,3 +537,31 @@ more verify pass). Deferred backend: B3 hardening + per-step unit tests (no test
   - Docs synced: `architecture.md` (§2 provider note + §7 `REPLICATE_PROVIDER` enum), this entry, memory.
   - ⚠️ No `.env.example` exists in the repo (docs reference one, but it was never committed) — nothing to
     update there. ✅ Live run passed (nano verified working); `pnpm build:api` typecheck still worth a pass.
+
+### 2026-07-06 (cont.) — Landing (Home) screen redesign + server-hosted showcase
+- **New landing page** replaces capture as the first screen; capture/prompt moved to a new **Create** tab.
+  Top tab bar now **3 tabs: Home | Create | Results** (`(tabs)/_layout.tsx`).
+- **Backend — server-hosted showcase** (so before/after examples are swappable without an app rebuild):
+  - `apps/api/public/showcase/` holds the images + a hand-editable `showcase.json` manifest + a README.
+    Placeholder solid-color PNGs generated for 3 sample items (living-room / balcony / bedroom) — user
+    replaces with real renders.
+  - `routes/showcase.ts`: `GET /showcase` reads the manifest and expands each `keyterm` → `{ keyterm,
+    amazonUrl }` via **reused `pipeline/amazon.ts` buildAmazonUrl** (real affiliate tag). Returns relative
+    `beforeUrl`/`afterUrl` (`/showcase/assets/<file>`). Missing manifest → empty list; bad JSON/shape → 500
+    envelope. `index.ts` mounts `express.static(showcaseDir)` at `/showcase/assets` + the router. Path
+    resolved via `import.meta.url` (same in dev `src/` and built `dist/`). **Contract NOT promoted** (policy).
+- **Frontend**:
+  - Extracted `CompareSlider` → `components/compare-slider.tsx` (added optional `onInteract` fired on first
+    touch via `onStartShouldSetPanResponder` returning false — observes without stealing the drag) and
+    `ProductRow` → `components/product-row.tsx`. `job/[id].tsx` now imports both (no visual change).
+  - `api/client.ts`: `getShowcase()` + local `ShowcaseItem` type (loose validation; absolutizes image URLs
+    against `EXPO_PUBLIC_API_BASE_URL`).
+  - New `(tabs)/index.tsx` landing: title **ClickRetina** + tagline, **Get started** CTA (→ Create tab),
+    showcase cards (each reveals its product list on first slider interaction, pushing content down; loading/
+    error+retry/empty states), **How it works** = 3 vertically-stacked "floating" step cards (Click it /
+    Design it / Visualize it, icon + copy), and an empty **black bottom bar** (fixed 64px, edge-to-edge).
+    Old capture screen copied verbatim to `(tabs)/create.tsx` (component renamed `CreateScreen`). Results
+    empty-state copy updated to "Create tab".
+- ⚠️ Owed (user runs): `pnpm build:api` + mobile `tsc --noEmit`; then live check — landing loads showcase,
+  slider reveals products, Create tab still submits → Results. Drop real before/after images into
+  `public/showcase/` + edit `showcase.json`.
