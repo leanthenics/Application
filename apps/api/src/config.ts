@@ -5,7 +5,7 @@ import 'dotenv/config';
  * param shape in `pipeline/ai/replicate.ts` — switching is a pure env swap
  * (`REPLICATE_PROVIDER` + `REPLICATE_MODEL`), no code change.
  */
-export type ReplicateProvider = 'qwen' | 'kontext';
+export type ReplicateProvider = 'qwen' | 'kontext' | 'nano';
 
 /**
  * Central runtime config. Reads from env with sensible defaults.
@@ -27,7 +27,7 @@ export const config = {
   },
   replicate: {
     apiToken: process.env.REPLICATE_API_TOKEN ?? '',
-    // 'qwen' (default) or 'kontext' — picks the input param shape for Model 2.
+    // 'qwen' (default), 'kontext', or 'nano' — picks the input param shape for Model 2.
     provider: (process.env.REPLICATE_PROVIDER ?? 'qwen') as ReplicateProvider,
     model: process.env.REPLICATE_MODEL ?? '',
     timeoutMs: Number(process.env.REPLICATE_TIMEOUT_MS ?? 120000),

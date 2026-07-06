@@ -26,11 +26,11 @@ const SYSTEM_INSTRUCTION = [
   'For each, return ONE concise, search-ready term a shopper could paste into Amazon —',
   'describe material, color, and style (e.g. "mid-century tan leather sofa", "arc brass floor lamp").',
   'No brand names, no prices, no duplicates, no room/background descriptions.',
-  'Return at most 5 items, most prominent first.',
+  'Return at most 10 items, most prominent first.',
 ].join(' ');
 
 /** Hard cap (architecture: up to 5 products). */
-const MAX_KEYTERMS = 5;
+const MAX_KEYTERMS = 10;
 
 /** Structured-output schema: a JSON array of strings. */
 const KEYTERMS_SCHEMA: Schema = {

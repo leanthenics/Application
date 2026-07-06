@@ -515,3 +515,25 @@ more verify pass). Deferred backend: B3 hardening + per-step unit tests (no test
 - **Docs refreshed**: stale **CLAUDE.md** header/layout/commands/Model-2 (Qwen→Kontext) brought up to date.
 - ⚠️ Per standing agreement the user runs builds/tests; a `tsc --noEmit` (mobile) + `pnpm build:api` typecheck
   are still worth a pass at the next code touch.
+
+### 2026-07-06 — Amazon affiliate tag live + third Model 2 provider (Google Nano Banana)
+- **Amazon affiliate tag now set**: `AMAZON_AFFILIATE_TAG=viralboost04-21` (`AMAZON_TLD=in`) in
+  `apps/api/.env` — product links now build as `https://www.amazon.in/s?k=<keyterm>&tag=viralboost04-21`.
+  No code change (env-driven via `config.amazon`); restart worker/api so the new env is read at boot.
+- **Model 2 third provider added: `nano` (Google Nano Banana) — USER-VERIFIED WORKING LIVE 2026-07-06**
+  (now the active provider; full pipeline runs green end-to-end; nano accepts the base64 data-URI in the
+  `image_input` array). Added for A/B testing image-edit models.
+  Newest Nano Banana 2 Lite isn't on Replicate yet; base `google/nano-banana` (Gemini 2.5 Flash Image) is.
+  - `config.ts`: `ReplicateProvider` type extended `'qwen' | 'kontext' | 'nano'`; provider comment updated.
+    Code default stays `'qwen'`; env drives active provider.
+  - `pipeline/ai/replicate.ts`: added `case 'nano'` to `buildInput` → `{ prompt, image_input: [dataUri],
+    output_format: 'png' }` (nano takes an **array** of images; no aspect-ratio/match param — preserves
+    input framing natively). Exhaustiveness guard, retry, timeout, `firstOutput`/`resolveMime` unchanged.
+    Stale "Qwen Image 2.0" / "Qwen and FLUX Kontext" JSDoc comments refreshed.
+  - `apps/api/.env`: active switch set to `REPLICATE_PROVIDER=nano` + `REPLICATE_MODEL=google/nano-banana`;
+    Kontext pair kept commented for instant A/B flip-back.
+  - **No contract change** (`OutputImageMime` already allows png). Model 1 prompt left **unchanged** by
+    decision (one variable at a time; tune only if nano output regresses).
+  - Docs synced: `architecture.md` (§2 provider note + §7 `REPLICATE_PROVIDER` enum), this entry, memory.
+  - ⚠️ No `.env.example` exists in the repo (docs reference one, but it was never committed) — nothing to
+    update there. ✅ Live run passed (nano verified working); `pnpm build:api` typecheck still worth a pass.

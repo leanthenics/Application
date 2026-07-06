@@ -4,8 +4,9 @@ import { config, type ReplicateProvider } from '../../config.js';
 import { withRetry } from './retry.js';
 
 /**
- * Shared Replicate client + helper for the pipeline (Model 2 — Qwen Image 2.0
- * image edit). Token/model/timeout come from env via `config.replicate`.
+ * Shared Replicate client + helper for the pipeline (Model 2 — image edit). The
+ * provider is env-swappable (Qwen | FLUX Kontext | Google Nano Banana); see
+ * `buildInput`. Token/model/timeout come from env via `config.replicate`.
  */
 
 let client: Replicate | undefined;
@@ -41,15 +42,18 @@ export interface EditImageResult {
 }
 
 /**
- * Build the model-specific `input` object for `replicate.run`. Qwen and FLUX
- * Kontext accept the same *intent* (edit an image with a prompt while keeping the
- * room's dimensions and not rewriting the prompt) but under different param
- * names, so the shape is selected by `REPLICATE_PROVIDER`. Adding a new provider
- * = add a case here; no other pipeline code changes.
+ * Build the model-specific `input` object for `replicate.run`. Each provider
+ * accepts the same *intent* (edit an image with a prompt while keeping the room's
+ * dimensions and not rewriting the prompt) but under different param names, so the
+ * shape is selected by `REPLICATE_PROVIDER`. Adding a new provider = add a case
+ * here; no other pipeline code changes.
  *
  * - qwen    : `image`,       `match_input_image: true`,          `enable_prompt_expansion: false`
  * - kontext : `input_image`, `aspect_ratio: 'match_input_image'`, `prompt_upsampling: false`
  *             (`output_format: 'png'` keeps edits lossless, matching Qwen's PNG output)
+ * - nano    : `image_input` (**array** of images), `output_format: 'png'`. Google Nano
+ *             Banana (Gemini 2.5 Flash Image) preserves input framing natively — no
+ *             aspect-ratio / match-input param exists or is needed.
  */
 function buildInput(
   provider: ReplicateProvider,
@@ -70,6 +74,12 @@ function buildInput(
         prompt,
         aspect_ratio: 'match_input_image',
         prompt_upsampling: false,
+        output_format: 'png',
+      };
+    case 'nano':
+      return {
+        prompt,
+        image_input: [dataUri], // nano-banana takes an ARRAY of images
         output_format: 'png',
       };
     default: {
@@ -107,9 +117,9 @@ function resolveMime(raw: string | undefined, fallback: OutputImageMime): Output
  * failed state.
  *
  * The `input` shape is provider-specific (see `buildInput`) so the model can be
- * switched between Qwen and FLUX Kontext purely via env. Both are configured to
- * keep the (already client-resized) room's dimensions and to use our enhanced
- * prompt verbatim rather than letting the model rewrite it a second time.
+ * switched between Qwen, FLUX Kontext, and Google Nano Banana purely via env. All
+ * are configured to keep the (already client-resized) room's dimensions and to use
+ * our enhanced prompt verbatim rather than letting the model rewrite it a second time.
  */
 export async function editImage({ dataUri, prompt, fallbackMime }: EditImageArgs): Promise<EditImageResult> {
   const replicate = getReplicate();
