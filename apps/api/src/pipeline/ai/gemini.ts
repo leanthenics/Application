@@ -70,6 +70,8 @@ export interface GenerateFromImageArgs {
    * free-form text.
    */
   responseSchema?: Schema;
+  /** Override the Gemini model id for this call (defaults to `config.gemini.model`). */
+  model?: string;
 }
 
 /**
@@ -84,6 +86,7 @@ export async function generateFromImage({
   prompt,
   systemInstruction,
   responseSchema,
+  model,
 }: GenerateFromImageArgs): Promise<string> {
   const ai = getGemini();
   return withRetry(async () => {
@@ -91,7 +94,7 @@ export async function generateFromImage({
     const timer = setTimeout(() => controller.abort(), config.gemini.timeoutMs);
     try {
       const response = await ai.models.generateContent({
-        model: config.gemini.model,
+        model: model ?? config.gemini.model,
         contents: [{ parts: [{ inlineData: { mimeType, data: image } }, { text: prompt }] }],
         config: {
           systemInstruction,

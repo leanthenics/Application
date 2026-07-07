@@ -22,7 +22,14 @@ export const config = {
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
+    // Default model for Gemini calls (Model 3 key-term extraction uses this).
     model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite',
+    // Model 1 (prompt/plan) runs on the stronger Flash model for better instruction-following.
+    model1: process.env.GEMINI_MODEL_1 ?? 'gemini-2.5-flash',
+    // Item-count range for Model 1's plan. Env-tunable so we can sweep for the
+    // quantity-vs-preservation sweet spot without code edits — change these + restart worker.
+    model1MinItems: Number(process.env.MODEL1_MIN_ITEMS ?? 12),
+    model1MaxItems: Number(process.env.MODEL1_MAX_ITEMS ?? 16),
     timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS ?? 30000),
   },
   replicate: {
