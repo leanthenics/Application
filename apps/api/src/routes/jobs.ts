@@ -4,6 +4,7 @@ import { CreateJobRequest, type GetJobResponse } from '@clickretina/contract';
 import { apiError } from '../http/errors.js';
 import { jobsQueue } from '../jobs/queue.js';
 import { mapState } from '../jobs/status.js';
+import { getStyle } from '../styles/catalog.js';
 
 export const jobsRouter: RouterType = Router();
 
@@ -16,6 +17,12 @@ jobsRouter.post('/jobs', async (req, res) => {
   if (!parsed.success) {
     const message = parsed.error.issues[0]?.message ?? 'Invalid request body';
     return res.status(400).json(apiError('invalid_request', message));
+  }
+
+  // Validate the style id against the live catalog (ids are server-driven, so the
+  // contract only checks it's a non-empty string — the real check is here).
+  if (!(await getStyle(parsed.data.style))) {
+    return res.status(400).json(apiError('invalid_style', 'Unknown style id'));
   }
 
   // Opaque UUID as the BullMQ job id (also what the client polls on).

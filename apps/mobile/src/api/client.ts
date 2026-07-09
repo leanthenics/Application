@@ -54,6 +54,33 @@ export async function getJob(id: string): Promise<GetJobResponse> {
   return GetJobResponse.parse(await res.json());
 }
 
+/** A garden style option from the server catalog (GET /styles). */
+export type Style = { id: string; label: string; blurb: string; imageUrl: string };
+
+/**
+ * GET /styles — the garden style catalog for the picker. Not promoted into
+ * @clickretina/contract (endpoint-first policy), so validated loosely here. The
+ * preview `imageUrl` may be blank until set on the server; relative paths are
+ * absolutized against the API base URL.
+ */
+export async function getStyles(): Promise<Style[]> {
+  const res = await fetch(`${BASE_URL}/styles`, { method: 'GET' });
+  if (!res.ok) await throwApiError(res);
+  const body = (await res.json()) as { styles?: unknown };
+  const styles = Array.isArray(body.styles) ? body.styles : [];
+  return styles
+    .map((raw): Style => {
+      const s = raw as Record<string, unknown>;
+      return {
+        id: String(s.id ?? ''),
+        label: typeof s.label === 'string' ? s.label : '',
+        blurb: typeof s.blurb === 'string' ? s.blurb : '',
+        imageUrl: absolutize(s.imageUrl),
+      };
+    })
+    .filter((s) => s.id && s.label);
+}
+
 /** A landing-page showcase card: static before/after images + shoppable products. */
 export type ShowcaseProduct = { keyterm: string; amazonUrl: string };
 export type ShowcaseItem = {

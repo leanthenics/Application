@@ -20,12 +20,12 @@ const STEPS: StepInfo[] = [
   {
     icon: 'camera-outline',
     title: 'Click it',
-    body: 'Snap or upload a photo of any room or space you want to transform.',
+    body: 'Snap or upload a photo of your garden, balcony, terrace, or backyard.',
   },
   {
     icon: 'sparkles-outline',
     title: 'Design it',
-    body: 'Describe your vision and our AI restyles the space with new furniture and decor.',
+    body: 'Pick a garden style and our AI redesigns your outdoor space with plants and features.',
   },
   {
     icon: 'cart-outline',
@@ -63,7 +63,7 @@ export default function LandingScreen() {
       <View style={[styles.hero, { minHeight: heroMinHeight }]}>
         <Text style={styles.title}>ClickRetina</Text>
         <Text style={styles.tagline}>
-          Visualize your dream space — snap a photo, restyle it with AI, and shop the look.
+          Visualize your dream garden — snap a photo, redesign it with AI, and shop the look.
         </Text>
 
         <Pressable

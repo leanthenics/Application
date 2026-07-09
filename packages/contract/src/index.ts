@@ -17,6 +17,9 @@ import { z } from 'zod';
  *   - 2026-06-30 — B2.2 (Model 2 wired): added OutputImageMime (jpeg/png/webp) for
  *                  JobResult.mimeType, since Qwen returns its native format (webp). Input
  *                  ImageMime stays strict (jpeg/png). Additive widening of the output set.
+ *   - 2026-07-08 — Gardens-only + style picker: CreateJobRequest gains `style` (server-catalog
+ *                  id, validated API-side) and `prompt` becomes optional. Style ids live in a
+ *                  hand-editable server manifest (GET /styles), deliberately NOT enumerated here.
  *
  * Still pending (added when required):
  *   schemas: ApiError
@@ -44,7 +47,12 @@ export const CreateJobRequest = z.strictObject({
     .min(1, 'image is required')
     .refine((s) => s.length % 4 === 0 && BASE64_RE.test(s), 'image must be valid base64'),
   mimeType: ImageMime.default('image/jpeg'),
-  prompt: z.string().min(1, 'prompt is required').max(2000, 'prompt must be at most 2000 characters'),
+  // Garden style id from the server catalog (GET /styles). The concrete id set is
+  // server-driven (hand-editable manifest), so the contract only requires a non-empty
+  // string here; the API validates it against the live catalog and 400s if unknown.
+  style: z.string().min(1, 'style is required'),
+  // Optional free-text request layered on top of the style (e.g. "add a water feature").
+  prompt: z.string().max(2000, 'prompt must be at most 2000 characters').optional(),
 });
 export type CreateJobRequest = z.infer<typeof CreateJobRequest>;
 

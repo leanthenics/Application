@@ -22,14 +22,23 @@ export const config = {
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
-    // Default model for Gemini calls (Model 3 key-term extraction uses this).
+    // Default model for Gemini calls (Model 3 key-term extraction / visualization uses this).
     model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite',
-    // Model 1 (prompt/plan) runs on the stronger Flash model for better instruction-following.
+    // Model 1 (scene analysis, vision) runs on the stronger Flash model for better scene understanding.
     model1: process.env.GEMINI_MODEL_1 ?? 'gemini-2.5-flash',
-    // Item-count range for Model 1's plan. Env-tunable so we can sweep for the
-    // quantity-vs-preservation sweet spot without code edits — change these + restart worker.
-    model1MinItems: Number(process.env.MODEL1_MIN_ITEMS ?? 12),
-    model1MaxItems: Number(process.env.MODEL1_MAX_ITEMS ?? 16),
+    // Model 2 (prompt enhancement, text) also on Flash for faithful instruction-following.
+    model2: process.env.GEMINI_MODEL_2 ?? 'gemini-2.5-flash',
+    // Toggle Model 2 (prompt enhancement) on/off. When off, the raw user prompt goes
+    // straight to Model 3. Set MODEL2_ENABLED=false to disable. Default: enabled.
+    model2Enabled: process.env.MODEL2_ENABLED !== 'false',
+    // Design richness 0..1 (0 = minimal additions, 1 = fully furnished). Steers how many
+    // fitting items Model 3 (nano) adds — nano invents the actual pieces. Env-tunable so we
+    // can sweep fullness-vs-preservation without code edits — change + restart worker. Clamped
+    // to [0,1]; a non-numeric value falls back to the 0.6 default rather than NaN.
+    richness: (() => {
+      const r = Number(process.env.DESIGN_RICHNESS ?? 0.6);
+      return Number.isFinite(r) ? Math.min(Math.max(r, 0), 1) : 0.6;
+    })(),
     timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS ?? 30000),
   },
   replicate: {

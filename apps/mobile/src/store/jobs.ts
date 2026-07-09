@@ -9,6 +9,11 @@ import { create } from 'zustand';
 export type Job = {
   jobId: string;
   inputThumbUri: string;
+  /** Chosen garden style id (used to re-run on retry). */
+  style: string;
+  /** Style label for display (e.g. "Japanese Zen"). */
+  styleLabel: string;
+  /** Optional free-text request (may be ''). */
   prompt: string;
   status: JobStatus;
   result: JobResult | null;

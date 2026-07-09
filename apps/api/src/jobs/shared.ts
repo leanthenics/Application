@@ -12,7 +12,10 @@ export const JOBS_QUEUE = 'jobs';
 export interface JobData {
   image: string;
   mimeType: ImageMime;
-  prompt: string;
+  /** Garden style id (validated against the catalog before enqueue). */
+  style: string;
+  /** Optional free-text request layered on top of the style. */
+  prompt?: string;
 }
 
 /**

@@ -28,8 +28,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "ClickRetina needs access to your photos so you can pick a room image to restyle.",
-          "cameraPermission": "ClickRetina needs camera access so you can photograph a room to restyle."
+          "photosPermission": "ClickRetina needs access to your photos so you can pick an image of your outdoor space to redesign.",
+          "cameraPermission": "ClickRetina needs camera access so you can photograph your outdoor space to redesign."
         }
       ],
       [

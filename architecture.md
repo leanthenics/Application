@@ -16,10 +16,17 @@
 
 ## 1. Product summary
 
-ClickRetina is a mobile app. A user submits an **image of a room/space + a text prompt**.
-The backend runs a 3-model AI pipeline that returns an **edited image** (restyled/edited
-furniture & products) plus **Amazon affiliate search links** for each detected product, so the
-user can shop the look.
+ClickRetina is a mobile app **focused on gardens / outdoor spaces** (2026-07-08). A user submits an
+**image of an outdoor space**, picks a **garden style** (Modern, Zen, Cottage, … from a server-driven
+catalog), and can add **optional free text**. The backend runs an AI pipeline that returns an **edited
+image** (the space redesigned in that style) plus **Amazon affiliate search links** for each detected
+product, so the user can shop the look.
+
+> **Style catalog** is a hand-editable server manifest (`apps/api/public/styles.json`) exposed via
+> `GET /styles`; the app fetches it dynamically, so styles can be added/renamed/retuned (and their
+> preview `imageUrl`s set) by editing JSON + restarting the API — no rebuild, no app release. The
+> catalog `id` is what the client submits as `CreateJobRequest.style`; the API validates it and the
+> rich per-style `guidance` text drives Model 2.
 
 ## 2. Tech stack
 
@@ -29,9 +36,10 @@ user can shop the look.
 | Backend      | Node.js + Express + TypeScript                                     |
 | Queue        | BullMQ (Redis-backed)                                              |
 | Shared types | Zod schemas in `packages/contract` — single source of truth for the API |
-| AI – Model 1 | Gemini Flash-Lite — prompt enhancement (text → text)              |
-| AI – Model 2 | **FLUX Kontext Pro** via **Replicate** — image edit (image + prompt → image) |
-| AI – Model 3 | Gemini Flash-Lite (vision) — product key-term extraction (image → terms) |
+| AI – Model 1 | Gemini Flash (vision) — scene analysis (image → editable-zones JSON) |
+| AI – Model 2 | Gemini Flash (text) — prompt enhancement (prompt + scene → instruction) |
+| AI – Model 3 | **nano-banana** (Gemini 2.5 Flash Image) via **Replicate** — image edit (image + prompt → image) |
+| AI – Model 4 | Gemini Flash-Lite (vision) — product key-term extraction (image → terms) |
 
 > Exact model IDs/versions are env-configurable (`GEMINI_MODEL`, `REPLICATE_MODEL`). Pin exact
 > versions at implementation time.
@@ -64,19 +72,28 @@ ClickRetina/
 ## 4. End-to-end workflow
 
 ```
-App ──(image[base64,768px] + prompt)──> POST /jobs
-API  ── zod-validate ── enqueue BullMQ job ── 202 { jobId }   (returns immediately)
+App ──(image[base64,768px] + style + optional prompt)──> POST /jobs
+API  ── zod-validate + style-id check ── enqueue BullMQ job ── 202 { jobId }   (returns immediately)
         │
    BullMQ Worker (fail-fast, no retries):
-   ├─ Model 1  Gemini Flash-Lite      : prompt                  -> enhancedPrompt
-   ├─ Model 2  Kontext (Replicate)    : inputImage + enhancedPrompt -> editedImage
-   ├─ Model 3  Gemini Flash-Lite (vis): editedImage             -> [keyterms] (max 5)
+   ├─ Model 1  Gemini Flash (vision)  : inputImage             -> scene analysis (JSON: landscape + preserve + editable zones)
+   ├─ Model 2  Gemini Flash (text)    : style + prompt + scene -> enhancedPrompt (styled; no product checklist)
+   ├─ Model 3  nano-banana (Replicate): inputImage + scene + enhancedPrompt -> editedImage
+   ├─ Model 4  Gemini Flash-Lite (vis): editedImage            -> [keyterms] (max 5)
    └─ Amazon link builder             : keyterm -> affiliate search URL (one per product)
         │
    Job result: { outputImage[base64], products: [{ keyterm, amazonUrl }] }
         │
 App ──(poll)──> GET /jobs/:id ── { status, result?, error? }
 ```
+
+> **Front-end split (2026-07-08).** Model 1 now only *analyzes* the space and returns
+> **editable zones** phrased positively (where new items may go); Model 2 *enhances* the
+> user's request into one render-friendly instruction (it does **not** curate a product
+> list — nano-banana invents the pieces); Model 3 (nano) adds into those zones using
+> **positive/semantic masking** while preserving everything else (target 80–90%+). Fullness
+> is a single `DESIGN_RICHNESS` (0–1) knob; the old `MODEL1_MIN_ITEMS`/`MODEL1_MAX_ITEMS`
+> plan-count knobs are retired.
 
 ## 5. Decisions locked (2026-06-29)
 
@@ -106,7 +123,8 @@ ImageMime = 'image/jpeg' | 'image/png'
 // POST /jobs  (create job)
 CreateJobRequest  = { image: string /*base64, no data-uri prefix*/,
                       mimeType: ImageMime /*default image/jpeg*/,
-                      prompt: string /*1..2000 chars*/ }
+                      style: string /*garden style id from GET /styles; API-validated*/,
+                      prompt?: string /*optional free text, <=2000 chars*/ }
 CreateJobResponse = { jobId: string }
 
 // GET /jobs/:id  (poll)
@@ -129,8 +147,10 @@ PipelineOut = { outputImage: string, mimeType: ImageMime, products: Product[] }
 
 | Method | Path         | Body / Params         | Success           | Notes                         |
 |--------|--------------|-----------------------|-------------------|-------------------------------|
-| POST   | `/jobs`      | `CreateJobRequest`    | `202` `CreateJobResponse` | validate, enqueue, return jobId |
+| POST   | `/jobs`      | `CreateJobRequest`    | `202` `CreateJobResponse` | validate (+ style-id check), enqueue, return jobId |
 | GET    | `/jobs/:id`  | `id` path param       | `200` `GetJobResponse`    | maps BullMQ state → JobStatus |
+| GET    | `/styles`    | —                     | `200` `{ styles: [{id,label,blurb,imageUrl}] }` | garden style catalog for the picker (hand-editable manifest) |
+| GET    | `/showcase`  | —                     | `200` `{ items: [...] }`  | landing before/after showcase |
 | GET    | `/health`    | —                     | `200`             | liveness + redis ping         |
 
 BullMQ state → `JobStatus` mapping: `waiting/delayed` → `queued`, `active` → `processing`,
@@ -143,8 +163,12 @@ BullMQ state → `JobStatus` mapping: `waiting/delayed` → `queued`, `active` �
 | `PORT`                  | API port                                  |
 | `REDIS_URL`             | Redis connection for BullMQ               |
 | `MAX_BODY_SIZE`         | Express body limit (default ~10mb)        |
-| `GEMINI_API_KEY`        | Gemini (models 1 & 3)                      |
-| `GEMINI_MODEL`          | Gemini model id                           |
+| `GEMINI_API_KEY`        | Gemini (models 1, 2 & 4)                    |
+| `GEMINI_MODEL`          | Gemini model id for the key-term step (default `gemini-2.5-flash-lite`) |
+| `GEMINI_MODEL_1`        | Model 1 scene analysis (default `gemini-2.5-flash`) |
+| `GEMINI_MODEL_2`        | Model 2 prompt enhancement (default `gemini-2.5-flash`) |
+| `MODEL2_ENABLED`        | Toggle Model 2 prompt enhancement; `false` = raw prompt → Model 3 (default enabled) |
+| `DESIGN_RICHNESS`       | Fullness of additions, `0`–`1` (default `0.6`) |
 | `REPLICATE_API_TOKEN`   | Replicate auth (model 2)                   |
 | `REPLICATE_PROVIDER`    | Model 2 input shape: `qwen` \| `kontext` \| `nano` (default `qwen`) |
 | `REPLICATE_MODEL`       | Image-edit model id/version (matches the provider) |

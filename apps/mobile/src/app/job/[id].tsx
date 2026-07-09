@@ -17,8 +17,8 @@ export default function JobDetailScreen() {
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
 
-  // Re-run identical (same photo + prompt) and replace the old failed entry.
-  // Re-submitting returns a new jobId; the app-wide poller picks up the new
+  // Re-run identical (same photo + style + prompt) and replace the old failed
+  // entry. Re-submitting returns a new jobId; the app-wide poller picks up the new
   // queued job automatically.
   async function onRetry() {
     if (!job) return;
@@ -26,10 +26,17 @@ export default function JobDetailScreen() {
     setRetrying(true);
     try {
       const { base64, mimeType } = await prepareForUpload(job.inputThumbUri);
-      const { jobId: newId } = await createJob({ image: base64, mimeType, prompt: job.prompt });
+      const { jobId: newId } = await createJob({
+        image: base64,
+        mimeType,
+        style: job.style,
+        ...(job.prompt ? { prompt: job.prompt } : {}),
+      });
       addJob({
         jobId: newId,
         inputThumbUri: job.inputThumbUri,
+        style: job.style,
+        styleLabel: job.styleLabel,
         prompt: job.prompt,
         status: 'queued',
         result: null,
@@ -66,7 +73,7 @@ export default function JobDetailScreen() {
         <Image source={{ uri: job.inputThumbUri }} style={styles.progressImage} contentFit="cover" />
         <ActivityIndicator color="#208AEF" style={{ marginTop: 20 }} />
         <Text style={styles.muted}>
-          {job.status === 'queued' ? 'Queued…' : 'Restyling your space…'}
+          {job.status === 'queued' ? 'Queued…' : 'Designing your garden…'}
         </Text>
       </View>
     );
@@ -106,6 +113,7 @@ export default function JobDetailScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <CompareSlider beforeUri={job.inputThumbUri} afterUri={uri} />
       <Text style={styles.compareHint}>Drag the divider to compare before / after</Text>
+      {job.styleLabel ? <Text style={styles.styleLabel}>{job.styleLabel} garden</Text> : null}
       <Text style={styles.sectionTitle}>Shop the look</Text>
       {products.map((p, i) => (
         <ProductRow key={`${p.keyterm}-${i}`} product={p} />
@@ -121,6 +129,7 @@ const styles = StyleSheet.create({
   errorTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
   progressImage: { width: 200, height: 200, borderRadius: 16, backgroundColor: '#F0F0F3' },
   compareHint: { fontSize: 13, color: '#8E8E93', textAlign: 'center' },
+  styleLabel: { fontSize: 15, fontWeight: '600', color: '#208AEF', textAlign: 'center' },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000', marginTop: 4 },
   retryButton: {
     flexDirection: 'row',

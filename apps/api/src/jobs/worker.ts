@@ -17,7 +17,9 @@ import { toClientSafeMessage } from '../pipeline/errors.js';
 const worker = new Worker<JobData, Awaited<ReturnType<typeof runPipeline>>>(
   JOBS_QUEUE,
   async (job: Job<JobData>) => {
-    console.log(`[worker] processing ${job.id} prompt="${job.data.prompt}" mime=${job.data.mimeType}`);
+    console.log(
+      `[worker] processing ${job.id} style="${job.data.style}" prompt="${job.data.prompt ?? ''}" mime=${job.data.mimeType}`,
+    );
     try {
       return await runPipeline(job.data, { jobId: job.id! });
     } catch (err) {

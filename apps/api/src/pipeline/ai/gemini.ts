@@ -26,6 +26,8 @@ export interface GenerateTextArgs {
   prompt: string;
   /** System instruction steering the model's behaviour. */
   systemInstruction: string;
+  /** Override the Gemini model id for this call (defaults to `config.gemini.model`). */
+  model?: string;
 }
 
 /**
@@ -33,14 +35,14 @@ export interface GenerateTextArgs {
  * enforced via AbortController. Returns the trimmed text, or throws if the
  * model returned nothing.
  */
-export async function generateText({ prompt, systemInstruction }: GenerateTextArgs): Promise<string> {
+export async function generateText({ prompt, systemInstruction, model }: GenerateTextArgs): Promise<string> {
   const ai = getGemini();
   return withRetry(async () => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), config.gemini.timeoutMs);
     try {
       const response = await ai.models.generateContent({
-        model: config.gemini.model,
+        model: model ?? config.gemini.model,
         contents: prompt,
         config: { systemInstruction, abortSignal: controller.signal },
       });

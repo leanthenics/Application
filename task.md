@@ -8,8 +8,12 @@
 > **Update this file as we go** — flip the box and add notes when a task is done.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
-**Current focus:** **NEXT UP → FRONTEND F3 (polish) + backend B3 (hardening)** — both deferred to next
-session (2026-07-02). **Frontend F0–F2 are COMPLETE** (Expo SDK 57: top-tab nav via `expo-router/ui`,
+**Current focus:** **GARDENS-ONLY PIVOT + STYLE PICKER — backend Postman-verified, frontend built
+(2026-07-08).** Flow: Create (photo + optional text) → **Choose a style** (`GET /styles` grid) → Generate →
+Results. Pipeline: `analyzeScene (landscape+observations) → enhancePrompt (style-driven) → editImage (nano,
+positive masking) → extractKeyterms → Amazon`. **Owed: user runs mobile `tsc --noEmit` + live Expo Go
+verify** (start `dev:mobile` first so typed routes pick up `/style`). Then style preview images + quality
+levers (input 768→1024, keyterm model→flash) + backend B3. **Frontend F0–F2 are COMPLETE** (Expo SDK 57: top-tab nav via `expo-router/ui`,
 capture+resize+submit, results grid + 2.5s poller + detail with Amazon links — verified live in Expo Go).
 **Backend B2 is COMPLETE** and the full
 pipeline runs end-to-end — `enhancePrompt(vision) → editImage(Kontext) → extractKeyterms → Amazon URLs →
@@ -565,3 +569,126 @@ more verify pass). Deferred backend: B3 hardening + per-step unit tests (no test
 - ⚠️ Owed (user runs): `pnpm build:api` + mobile `tsc --noEmit`; then live check — landing loads showcase,
   slider reveals products, Create tab still submits → Results. Drop real before/after images into
   `public/showcase/` + edit `showcase.json`.
+
+### 2026-07-08 — Pipeline redesign: scene-analysis + prompt-enhance split (one job per model)
+- **Why:** Model 1 was an over-loaded "designer" (returned a 12–16 item JSON plan). Handing nano that
+  long "add all of this" plan drove background drift. Split the front of the pipeline so each model does
+  one job and nano's own creativity picks the pieces. Plan approved this session.
+- **New flow** (contract UNCHANGED; provider stays `nano`):
+  1. **Model 1 `analyzeScene`** (NEW, `steps/analyzeScene.ts`) — Gemini **Flash** vision: original image →
+     structured `SceneAnalysis` JSON (spaceType, setting, description, fixedElements, lighting, style,
+     **editableZones** phrased *positively* — where new items may go). No product picks. Fail-fast on zero
+     zones. Exports `SceneAnalysis` type + `renderSceneForEditor()` prose helper.
+  2. **Model 2 `enhancePrompt`** (REWRITTEN) — Gemini **Flash** text: `{ prompt, scene }` → one cohesive
+     render-friendly instruction via `generateText` (added optional `model` param to it). **No product
+     checklist** (nano invents pieces); `richnessDirective(config.gemini.richness)` maps the 0–1 knob to
+     minimal/modest/full/maximal wording. Old designer plan schema (`PLAN_SCHEMA`/`renderItem`/copy-cap)
+     retired. **Non-fatal:** if Model 2 errors/returns empty it falls back to the raw user prompt (logs a
+     warning) instead of failing the job — Model 3 wraps it with the zones + preservation regardless.
+     **Toggle:** `MODEL2_ENABLED=false` skips Model 2 entirely and sends the raw user prompt to Model 3.
+  3. **Model 3 `editImage`** — nano (unchanged provider). `EditImageInput` gains `scene`;
+     `composeEditPrompt(instruction, scene)` now uses **positive/semantic masking**: names the editable
+     zones edits go INTO + names `fixedElements` in the preservation clause (falls back to the generic
+     list when scene absent). Kept the strong "same photograph / match lighting+framing+dimensions" rules.
+  4. **Model 4 `extractKeyterms`** + Amazon builder — UNCHANGED (still Flash-Lite vision).
+- **config.ts**: added `gemini.model2` (`GEMINI_MODEL_2`, default `gemini-2.5-flash`) + `gemini.richness`
+  (`DESIGN_RICHNESS`, default `0.6`, clamped [0,1]); removed `model1MinItems`/`model1MaxItems`.
+- **runner.ts** rewired: `analyzeScene → enhancePrompt(scene) → editImage(scene) → extractKeyterms →
+  amazon`; logs a one-line scene summary + the enhanced prompt (no image payloads).
+- **Docs**: `architecture.md` §2 model table, §4 workflow diagram + split note, §7 config table updated.
+- ⚠️ **Owed (user runs):** `.env` edits — add `GEMINI_MODEL_2=gemini-2.5-flash` + `DESIGN_RICHNESS=0.6`,
+  remove `MODEL1_MIN_ITEMS`/`MODEL1_MAX_ITEMS`; then `pnpm build:api` typecheck; live Postman run
+  (specific + vague prompts) confirming `analyzeScene → enhancePrompt → editImage → extractKeyterms →
+  completed`, background ~80–90%+ preserved; sweep `DESIGN_RICHNESS=0` vs `1`.
+
+### 2026-07-08 (cont.) — Role fixes: Model 2 = pure enhancer, Model 3 preservation-first
+- **Problem 1 — Model 2 was recommending products** (a "rooftop garden" prompt got sofas/chairs). Root
+  cause: its system prompt told it to "add furniture and decor" and it saw the editable zones. **Fix:**
+  Model 2 is now a **pure prompt enhancer** — rewrites the user's request into a clearer 1–3 sentence
+  version of THE SAME request, strictly within the user's theme, and is explicitly barred from naming
+  products/items/placements or introducing anything the user didn't ask for. It now sees only a
+  **lightweight scene brief** (`renderSceneBrief`: space type + style + lighting — no zones, no fixed
+  list), so it has no placement cues. `MAX_ENHANCED_LENGTH` 2000 → **600**.
+- **Problem 2 — edited image drifted too much.** **Fix (two parts):** (a) **Model 1** now returns a much
+  more concrete, nano-specific analysis — an **exhaustive, spatially-named `fixedElements`** (every
+  structure + existing object, with where each sits) plus precise empty `editableZones`; (b) **Model 3**
+  prompt rebuilt **preservation-first**: leads with "precise PHOTO-EDITING task, not generation", then an
+  explicit PRESERVE-EXACTLY block (Model 1's fixed list + camera/framing/dimensions), then WHAT TO ADD
+  (the enhanced request, bounded to it) + WHERE (the zones), then "everything else pixel-for-pixel
+  identical". Positive/semantic masking, target 80–90%+ preserved.
+- **Richness moved to Model 3.** The 0–1 `DESIGN_RICHNESS` knob now steers *how many fitting items nano
+  adds* (`richnessDirective` in `editImage.ts`), not Model 2's wording — Model 2 no longer touches
+  fullness. `config` comment updated.
+
+### 2026-07-08 (cont. 2) — Gardens-only pivot + style picker + Model 1 richer analysis
+- **Scope pivot (user):** app is now **gardens / outdoor spaces only**, with a **style picker** (Modern,
+  Zen, Cottage, Mediterranean, Tropical, Desert, Farmhouse, Coastal, Boho, Woodland) chosen after capture,
+  plus **optional** free text.
+- **Style catalog = hand-editable server manifest** (`apps/api/public/styles.json`: id/label/blurb/
+  imageUrl/guidance). `imageUrl` blank for now (swappable later). New `src/styles/catalog.ts` (cached
+  loader, `getStyle`, `listStylesPublic`, mirrors showcase path-resolution) + `routes/styles.ts`
+  **`GET /styles`** (returns id/label/blurb/imageUrl; internal `guidance` stays server-side), mounted in
+  `index.ts`. Editing styles = edit JSON + restart API, no rebuild/app release.
+- **Contract:** `CreateJobRequest` gains **`style`** (non-empty string; concrete ids server-driven so the
+  contract only checks non-empty) and **`prompt` is now optional** (≤2000). Promotion noted in the contract
+  doc header. POST `/jobs` validates the style id against the live catalog → **400 `invalid_style`** if
+  unknown. `JobData` carries `style` + optional `prompt`.
+- **Model 1 (`analyzeScene`) upgraded** to a richer garden analyzer: added **`landscape`** (terrain,
+  surroundings, views, sun, existing greenery) + **`observations`** (3–6 neutral factual notes — the
+  "ideas about the image", analysis-only, no products) alongside the exhaustive `fixedElements` + precise
+  `editableZones`. Prompt reframed for outdoor/garden spaces. `landscape` now also feeds the Model 2 brief
+  and the Model 3 preservation context.
+- **Model 2 (`enhancePrompt`) is now STYLE-DRIVEN:** input `{ styleLabel, styleGuidance, prompt?, scene }`
+  → one styled garden-redesign instruction that weaves the style aesthetic with the optional user text.
+  Still no product/placement lists. Non-fatal fallback now uses a **style base instruction** (guidance +
+  any user text), so it's always usable even with empty prompt / Model 2 off.
+- **runner** resolves the style id → catalog entry (tolerant if manifest changed) and passes label/guidance
+  into Model 2; logs style. **worker** log includes style.
+- **Docs:** `architecture.md` §1 scope + style-catalog note, §4 diagram, §6 CreateJobRequest + endpoints
+  (GET /styles, /showcase). Contract `JobResult`/GET unchanged.
+- ⚠️ **Owed (user runs):** rebuild contract then api — `pnpm --filter @clickretina/contract build` then
+  `pnpm build:api`; restart api+worker; **Postman**: `GET /styles` lists 10; `POST /jobs` with a valid
+  `style` (e.g. `"zen"`) + no prompt, and with `"zen"` + prompt "add a water feature"; bad style → 400
+  `invalid_style`. Check logs `analyzeScene → enhancePrompt(styled) → editImage → extractKeyterms →
+  completed`, on-theme + background preserved. **Mobile is NOT updated yet** (contract now requires
+  `style`) — the app's `POST /jobs` will 400 until the frontend style screen lands.
+
+**▶ Backend Postman-verified live (2026-07-08).** Frontend style-picker built next (below).
+
+### 2026-07-08 (cont. 3) — Frontend: style-picker screen + gardens copy pass
+- **Backend verified first:** user confirmed `/styles`, `/jobs` (with `style`), bad-style 400, and output
+  all working via Postman (after rebuilding the contract package — `dist` was stale, the "Unrecognized key
+  style" gotcha). Root cause noted: `pnpm build:api` does NOT rebuild `@clickretina/contract`; run
+  `pnpm --filter @clickretina/contract build` + restart `dev:api`/`dev:worker` after any contract change.
+- **New flow:** Create (photo + optional text) → **Choose a style** (dedicated screen) → Generate → Results.
+- **`api/client.ts`**: added `getStyles()` + `Style` type (`{id,label,blurb,imageUrl}`, imageUrl absolutized).
+- **Stores**: new `store/draft.ts` (`useDraftStore` holds the pending `{imageUri,prompt}` — hand-off to the
+  style screen without URL-encoding the file URI through router params). `store/jobs.ts` `Job` gains
+  `style` + `styleLabel` (prompt may now be '').
+- **`(tabs)/create.tsx`**: prompt is now OPTIONAL; only the photo is required. Arrow-submit replaced with a
+  **"Choose a style"** button → `setDraft` + `router.push('/style')`. Copy → gardens.
+- **`app/style.tsx` (NEW)**: fetches `getStyles()`, renders a **2-col image-card grid** (neutral leaf
+  placeholder until `imageUrl` set) with single-select + check badge; **Generate** →
+  `prepareForUpload(draft.imageUri)` → `createJob({image,mimeType,style,prompt?})` → `addJob(...styleLabel)`
+  → `clearDraft()` → `router.replace('/results')`. Loading / error+retry / no-draft-guard states.
+- **`_layout.tsx`**: registered `Stack.Screen name="style"` (title "Choose a style").
+- **`job/[id].tsx` retry** now re-runs with the same `style` (+ styleLabel); completed view shows the
+  "<Style> garden" label; "Restyling your space…" → "Designing your garden…".
+- **Gardens copy pass**: landing tagline + How-it-works steps, `app.json` camera/photos permission strings,
+  Create headings/placeholder ("photo of your outdoor space", "add optional details…").
+- ⚠️ **Owed (user runs):** mobile `tsc --noEmit` (contract already rebuilt). **Start `pnpm dev:mobile`
+  first** so expo regenerates typed-routes for the new `/style` route before typechecking. Then live in
+  Expo Go: capture → Choose a style (grid loads from `/styles`) → Generate → Results → detail (compare +
+  style label + shop). Optional next: drop real preview images into the style manifest `imageUrl`s;
+  quality levers (input 768→1024, keyterm model→flash); backend B3 hardening + tests still deferred.
+
+### 2026-07-08 (cont. 4) — Richness verified + hardened
+- Confirmed the `DESIGN_RICHNESS` path end-to-end (`config.gemini.richness` → `richnessDirective` →
+  nano "WHAT TO ADD" line). Offline sweep verified the clamp + buckets: 0→few(2-4), 0.3→modest(5-7),
+  0.6(default)→full(8-12), 0.8-1→generous(12+); out-of-range clamps; bad value → 0.6 default.
+- **Made the effect visible/robust:** bucket wording now carries **explicit count ranges** (vague
+  adjectives alone didn't move nano); added a per-job worker log `[editImage] richness=X → "…"`; guarded
+  non-numeric env → 0.6 (was silently NaN→max) in both `config.ts` and `richnessDirective`.
+
+**▶ Resume next session at:** live-verify the mobile style flow in Expo Go; then style preview images +
+quality levers, then B3.

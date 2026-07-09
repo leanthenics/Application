@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,19 +13,19 @@ import {
   View,
 } from 'react-native';
 import { ImageSourceSheet } from '@/components/image-source-sheet';
-import { createJob } from '@/api/client';
-import { pickFromCamera, pickFromLibrary, prepareForUpload } from '@/lib/image';
-import { useJobsStore } from '@/store/jobs';
+import { pickFromCamera, pickFromLibrary } from '@/lib/image';
+import { useDraftStore } from '@/store/draft';
 
 export default function CreateScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
-  const addJob = useJobsStore((s) => s.addJob);
+  const setDraft = useDraftStore((s) => s.setDraft);
 
-  const canSubmit = !!imageUri && prompt.trim().length > 0 && !submitting;
+  // Only the photo is required now — the style (next screen) drives the design;
+  // the text is optional extra detail.
+  const canProceed = !!imageUri;
 
   async function onCamera() {
     setSheetVisible(false);
@@ -50,32 +49,11 @@ export default function CreateScreen() {
     }
   }
 
-  async function onSubmit() {
-    if (!imageUri || prompt.trim().length === 0) return;
-    setError(null);
-    setSubmitting(true);
-    try {
-      const { base64, mimeType } = await prepareForUpload(imageUri);
-      const { jobId } = await createJob({ image: base64, mimeType, prompt: prompt.trim() });
-      addJob({
-        jobId,
-        inputThumbUri: imageUri,
-        prompt: prompt.trim(),
-        status: 'queued',
-        result: null,
-        error: null,
-        createdAt: Date.now(),
-      });
-      setImageUri(null);
-      setPrompt('');
-      router.navigate('/results');
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : 'Could not submit. Check your connection and API URL.',
-      );
-    } finally {
-      setSubmitting(false);
-    }
+  // Hand the capture to the style-picker screen, which submits the job.
+  function onNext() {
+    if (!imageUri) return;
+    setDraft({ imageUri, prompt: prompt.trim() });
+    router.push('/style');
   }
 
   return (
@@ -83,7 +61,7 @@ export default function CreateScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.heading}>Restyle your space</Text>
+        <Text style={styles.heading}>Design your garden</Text>
 
         <View style={styles.card}>
           {imageUri ? (
@@ -100,33 +78,29 @@ export default function CreateScreen() {
           ) : (
             <Pressable style={styles.picker} onPress={() => setSheetVisible(true)}>
               <Ionicons name="image-outline" size={52} color="#208AEF" />
-              <Text style={styles.pickerText}>Add a photo of your room</Text>
+              <Text style={styles.pickerText}>Add a photo of your outdoor space</Text>
             </Pressable>
           )}
         </View>
 
-        <View style={styles.promptRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="Describe the changes you want…"
-            placeholderTextColor="#8E8E93"
-            value={prompt}
-            onChangeText={setPrompt}
-            maxLength={2000}
-            multiline
-          />
-          <Pressable
-            style={[styles.arrowBtn, !canSubmit && styles.arrowBtnDisabled]}
-            onPress={onSubmit}
-            disabled={!canSubmit}
-            accessibilityLabel="Generate">
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Ionicons name="arrow-forward" size={24} color="#fff" />
-            )}
-          </Pressable>
-        </View>
+        <TextInput
+          style={styles.input}
+          placeholder="Add optional details… (e.g. add a water feature)"
+          placeholderTextColor="#8E8E93"
+          value={prompt}
+          onChangeText={setPrompt}
+          maxLength={2000}
+          multiline
+        />
+
+        <Pressable
+          style={[styles.nextBtn, !canProceed && styles.nextBtnDisabled]}
+          onPress={onNext}
+          disabled={!canProceed}
+          accessibilityLabel="Choose a style">
+          <Text style={styles.nextText}>Choose a style</Text>
+          <Ionicons name="arrow-forward" size={20} color="#fff" />
+        </Pressable>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
@@ -165,9 +139,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  promptRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
   input: {
-    flex: 1,
     minHeight: 48,
     maxHeight: 140,
     borderWidth: 1,
@@ -179,14 +151,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000',
   },
-  arrowBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#208AEF',
+  nextBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#208AEF',
   },
-  arrowBtnDisabled: { backgroundColor: '#B7D6F7' },
+  nextBtnDisabled: { backgroundColor: '#B7D6F7' },
+  nextText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   error: { color: '#FF3B30', fontSize: 14 },
 });

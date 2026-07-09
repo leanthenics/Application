@@ -5,9 +5,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useJobPoller } from '@/hooks/use-job-poller';
 
 /**
- * Root navigator: a Stack holding the top-tabs group ((tabs): Home | Results)
- * plus the pushed job detail screen (job/[id]). The single job poller is
- * mounted here so it runs app-wide regardless of the active tab.
+ * Root navigator: a Stack holding the top-tabs group ((tabs): Home | Create |
+ * Results) plus the pushed style-picker (style) and job detail (job/[id]) screens.
+ * The single job poller is mounted here so it runs app-wide regardless of tab.
  */
 export default function RootLayout() {
   useJobPoller();
@@ -16,6 +16,7 @@ export default function RootLayout() {
       <StatusBar style="auto" />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="style" options={{ title: 'Choose a style' }} />
         <Stack.Screen name="job/[id]" options={{ title: 'Result' }} />
       </Stack>
     </GestureHandlerRootView>
