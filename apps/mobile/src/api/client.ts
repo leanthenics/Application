@@ -3,6 +3,7 @@ import {
   GetJobResponse,
   type CreateJobRequest,
 } from '@clickretina/contract';
+import { supabase } from '@/lib/supabase';
 
 /**
  * API base URL. Set EXPO_PUBLIC_API_BASE_URL in apps/mobile/.env:
@@ -19,6 +20,17 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     this.code = code;
   }
+}
+
+/**
+ * Bearer header for the protected /jobs endpoints. Reads the session fresh each
+ * call so a background token refresh (autoRefreshToken) is always reflected — a
+ * token cached at import time could be stale. No session → no header (server 401s).
+ */
+async function authHeader(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function throwApiError(res: Response): Promise<never> {
@@ -40,7 +52,7 @@ async function throwApiError(res: Response): Promise<never> {
 export async function createJob(body: CreateJobRequest): Promise<CreateJobResponse> {
   const res = await fetch(`${BASE_URL}/jobs`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify(body),
   });
   if (!res.ok) await throwApiError(res);
@@ -49,7 +61,10 @@ export async function createJob(body: CreateJobRequest): Promise<CreateJobRespon
 
 /** GET /jobs/:id — poll a job's status/result. */
 export async function getJob(id: string): Promise<GetJobResponse> {
-  const res = await fetch(`${BASE_URL}/jobs/${encodeURIComponent(id)}`, { method: 'GET' });
+  const res = await fetch(`${BASE_URL}/jobs/${encodeURIComponent(id)}`, {
+    method: 'GET',
+    headers: { ...(await authHeader()) },
+  });
   if (!res.ok) await throwApiError(res);
   return GetJobResponse.parse(await res.json());
 }

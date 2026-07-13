@@ -2,6 +2,7 @@ import { Router, type Router as RouterType } from 'express';
 import { randomUUID } from 'node:crypto';
 import { CreateJobRequest, type GetJobResponse } from '@clickretina/contract';
 import { apiError } from '../http/errors.js';
+import { requireAuth } from '../http/auth.js';
 import { jobsQueue } from '../jobs/queue.js';
 import { mapState } from '../jobs/status.js';
 import { getStyle } from '../styles/catalog.js';
@@ -12,7 +13,7 @@ export const jobsRouter: RouterType = Router();
  * POST /jobs — validate the request, enqueue a BullMQ job, return its id.
  * Returns `202 { jobId }` immediately; the worker processes asynchronously.
  */
-jobsRouter.post('/jobs', async (req, res) => {
+jobsRouter.post('/jobs', requireAuth, async (req, res) => {
   const parsed = CreateJobRequest.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.issues[0]?.message ?? 'Invalid request body';
@@ -25,9 +26,10 @@ jobsRouter.post('/jobs', async (req, res) => {
     return res.status(400).json(apiError('invalid_style', 'Unknown style id'));
   }
 
-  // Opaque UUID as the BullMQ job id (also what the client polls on).
+  // Opaque UUID as the BullMQ job id (also what the client polls on). Stamp the
+  // authenticated user's id (guaranteed set by requireAuth) so the job is owned.
   const jobId = randomUUID();
-  await jobsQueue.add('process', parsed.data, { jobId });
+  await jobsQueue.add('process', { ...parsed.data, userId: req.userId! }, { jobId });
   return res.status(202).json({ jobId });
 });
 
@@ -36,9 +38,15 @@ jobsRouter.post('/jobs', async (req, res) => {
  * Maps BullMQ state → JobStatus; returns `result` when completed, `error` when failed.
  * Unknown or TTL-evicted id → 404.
  */
-jobsRouter.get('/jobs/:id', async (req, res) => {
+jobsRouter.get('/jobs/:id', requireAuth, async (req, res) => {
   let job = await jobsQueue.getJob(req.params.id);
   if (!job) {
+    return res.status(404).json(apiError('not_found', 'Job not found or expired'));
+  }
+
+  // Ownership: a job is only visible to the user who created it. Mismatch → 404
+  // (not 403) so callers can't probe which job ids exist for other users.
+  if (job.data.userId !== req.userId) {
     return res.status(404).json(apiError('not_found', 'Job not found or expired'));
   }
 

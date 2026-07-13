@@ -26,6 +26,7 @@ type JobsState = {
   addJob: (job: Job) => void;
   patchJob: (jobId: string, patch: Partial<Job>) => void;
   removeJob: (jobId: string) => void;
+  reset: () => void;
 };
 
 export const useJobsStore = create<JobsState>((set) => ({
@@ -39,6 +40,8 @@ export const useJobsStore = create<JobsState>((set) => ({
       delete next[jobId];
       return { jobs: next };
     }),
+  // Clear all jobs when the user logs out so the next user can't see them.
+  reset: () => set({ jobs: {} }),
 }));
 
 /** Jobs as a list, newest first. */

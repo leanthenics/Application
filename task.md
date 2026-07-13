@@ -8,11 +8,11 @@
 > **Update this file as we go** — flip the box and add notes when a task is done.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
-**Current focus (2026-07-10):** **AUTH via Supabase (login/signup + user DB) — Steps 1–3 DONE**
-(email/password + email-confirmation deep link `clickretina://auth-callback`, PKCE, on a **dev build** —
-off Expo Go). Next (tomorrow) = **Step 4 profiles** (table+RLS+trigger, display name) + a **UI overhaul**
-(top tabs → **bottom nav**, add a **top bar → Settings page** with profile info + logout), then Step 5
-(API JWT verification → user-owned jobs) + Step 6 (Google OAuth). See the auth session-log entry below and
+**Current focus (2026-07-13):** **AUTH via Supabase — Steps 1–5 DONE & user-verified.** Step 5 = API
+verifies the Supabase ES256 JWT locally via `jose`/JWKS, `/jobs` require `Authorization: Bearer`, jobs are
+stamped with + scoped to `userId` (cross-user GET → 404); mobile attaches `session.access_token`; jobs
+store clears on logout. **Only Step 6 (Google OAuth) remains** in the auth workstream. Also still owed:
+the **Model-4 grouped/priced products** live verification (uncommitted; see 2026-07-10 entry). See the auth session-log entry below and
 memory `project-auth-supabase`. **Prior focus:** **GARDENS-ONLY PIVOT + STYLE PICKER — backend
 Postman-verified, frontend built (2026-07-08).** Flow: Create (photo + optional text) → **Choose a style** (`GET /styles` grid) → Generate →
 Results. Pipeline: `analyzeScene (landscape+observations) → enhancePrompt (style-driven) → editImage (nano,
@@ -755,3 +755,60 @@ quality levers, then B3.
 
 **▶ Resume next session (2026-07-11): Step 4 (profiles + display name) + the UI overhaul (bottom nav +
 Settings page).** Backend Model-4 verify (above) still owed if not yet run.
+
+### 2026-07-13 — Auth Step 4 (profiles + display name) + UI overhaul — DONE & user-verified
+- **4a — profiles table (user ran SQL):** `public.profiles` (id→auth.users, full_name, email, timestamps)
+  + RLS read-own/update-own (`auth.uid() = id`) + `handle_new_user` trigger (SECURITY DEFINER) copying
+  `raw_user_meta_data->>'full_name'` + email into profiles on signup.
+- **4b — display name at sign-up:** `lib/auth.ts` `signUpWithEmail(email,password,fullName)` passes
+  `options.data.full_name` (lands in `raw_user_meta_data` → trigger copies it). `(auth)/sign-up.tsx` adds a
+  required "Full name" field (`autoCapitalize:words`, `autoComplete:name`; in `canSubmit`). **Verified:**
+  new signup → `profiles` row has the name.
+- **4c — profile fetch:** new `store/profile.ts` (Zustand: profile/loading/error + `reset`) + `hooks/
+  use-profile.ts` (keyed on `session.user.id`; `supabase.from('profiles').select().eq('id').single()`;
+  resets on logout — no cross-account leak; RLS makes id-query safe). Mounted in root `_layout.tsx`.
+- **4d — UI overhaul:** new `app/settings.tsx` (avatar + name + email w/ session-email fallback + red
+  Logout; logout clears session → root guard swaps to (auth), no manual nav). Registered `settings` inside
+  the authed `Stack.Protected` (native header + back). `(tabs)/_layout.tsx` **rewritten**: TOP tabs →
+  **BOTTOM nav** (`TabSlot` before `TabList` per v57 docs; Ionicons filled-when-focused) + an **app-wide top
+  bar** (brand + gear → `/settings`). Removed the temporary logout footer (+ unused imports/styles) from
+  `(tabs)/index.tsx`. Confirmed the expo-router/ui bottom-bar pattern against v57 docs before writing.
+- ℹ️ Clarified for the user: `pnpm dev:mobile` (`expo start`) only starts **Metro** (serves JS to the
+  already-installed **dev-client** build, auto-detected via `expo-dev-client` dep); it does NOT build/install
+  the native app — that's `expo run:android`, needed only on native/config changes. All of 4d is pure JS →
+  no rebuild. `expo start` also regenerates typed routes so `/settings` is known to `tsc`.
+- **All 4a–4d user-verified live** (bottom nav switches, gear → Settings shows name+email, logout → sign-in,
+  regression: Create→style→Generate→Results + Home showcase still work). **Code UNCOMMITTED as of this note.**
+
+**▶ Resume next session at: Step 5** — API `jose`/JWKS middleware (verify Supabase JWT locally via
+`https://<ref>.supabase.co/auth/v1/.well-known/jwks.json`), require `Authorization: Bearer` on `/jobs`,
+stamp `userId`; mobile attaches `session.access_token`. Then Step 6 (Google OAuth). Owed: Model-4 verify;
+commit the uncommitted auth + Model-4 work.
+
+### 2026-07-13 (cont.) — Auth Step 5 (API JWT verification → user-owned jobs) — DONE & user-verified
+- **Confirmed the project signs JWTs with ES256 (asymmetric)** — its public JWKS
+  (`/auth/v1/.well-known/jwks.json`) serves an EC key, so local JWKS verification via `jose` is the right
+  path (no legacy HS256 shared-secret fallback needed).
+- **5.1 backend:** added `jose` to `apps/api`. `config.ts` gains a `supabase` block (url/jwksUrl/issuer)
+  derived from new env **`SUPABASE_URL`**. New `http/auth.ts` `requireAuth` — pulls `Authorization: Bearer`,
+  `jwtVerify(token, remoteJWKS, { issuer, audience:'authenticated' })`, sets `req.userId = payload.sub`;
+  any failure → generic **401** (real reason logged server-side only, `[auth] token verification failed:`).
+  JWKS built lazily + cached (`createRemoteJWKSet`). `jobs/shared.ts` `JobData` gains `userId: string`.
+  `routes/jobs.ts`: `requireAuth` on POST + GET; POST stamps `userId`; GET returns **404** on ownership
+  mismatch (not 403 — don't leak existence). No contract change (auth is header-only).
+- **5.2 mobile:** `api/client.ts` `authHeader()` reads `supabase.auth.getSession()` **fresh per call**
+  (survives background token refresh) → `Authorization: Bearer` on `createJob` + `getJob` only (styles/
+  showcase stay public).
+- **Logout hygiene:** `store/jobs.ts` gains `reset()`; `use-auth-listener.ts` calls it on the `SIGNED_OUT`
+  event (covers every logout path incl. token revocation), so one user's job cards can't leak to the next.
+- **Gotchas hit during verify:** (a) generic "Invalid or expired token" was actually **`SUPABASE_URL`
+  missing** from `apps/api/.env` (empty issuer/jwksUrl → getJwks throws → caught as 401) — the server log
+  named the real cause; (b) user first added `SUPABASE_URL` to `apps/mobile/.env` (wrong file — backend
+  reads plain `SUPABASE_URL` from `apps/api/.env`, not the `EXPO_PUBLIC_` one). Also restored a missing
+  root `dev:mobile` script that had been dropped from `package.json`.
+- **User-verified live:** logged in → Create → style → Generate → **completed** (token attached + job
+  owned). ⚠️ **Commit state:** Steps 1–4 are committed at `8892cb2` "login working" (which ALSO swept in the
+  still-unverified Model-4 grouped/priced change); **Step 5 is UNCOMMITTED** as of this note.
+
+**▶ Resume next session at: Step 6 (Google OAuth)** — the last auth piece. Also still owed: the Model-4
+grouped/priced-products live verification (now committed at `8892cb2` but never verified); **commit Step 5.**
