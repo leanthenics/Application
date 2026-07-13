@@ -2,6 +2,13 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
+# Flat node_modules (no .pnpm/<pkg>@<ver>_<hash>/ virtual-store wrapper). Required
+# on Windows so the native Android build (react-native-worklets/reanimated CMake)
+# stays under the 250-char object-path limit — the deep isolated paths blew past it
+# (CMAKE_OBJECT_PATH_MAX → "ninja: build.ninja still dirty"). Also improves RN native
+# module resolution. Trade-off: exposes phantom deps like npm/yarn — acceptable here.
+nodeLinker: hoisted
+
 # Force a single ioredis version so the instance type we create matches the one
 # BullMQ expects (BullMQ pulled 5.10.1, apps/api asked for 5.11.1 -> type clash).
 overrides:

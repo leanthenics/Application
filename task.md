@@ -8,8 +8,13 @@
 > **Update this file as we go** — flip the box and add notes when a task is done.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
-**Current focus:** **GARDENS-ONLY PIVOT + STYLE PICKER — backend Postman-verified, frontend built
-(2026-07-08).** Flow: Create (photo + optional text) → **Choose a style** (`GET /styles` grid) → Generate →
+**Current focus (2026-07-10):** **AUTH via Supabase (login/signup + user DB) — Steps 1–3 DONE**
+(email/password + email-confirmation deep link `clickretina://auth-callback`, PKCE, on a **dev build** —
+off Expo Go). Next (tomorrow) = **Step 4 profiles** (table+RLS+trigger, display name) + a **UI overhaul**
+(top tabs → **bottom nav**, add a **top bar → Settings page** with profile info + logout), then Step 5
+(API JWT verification → user-owned jobs) + Step 6 (Google OAuth). See the auth session-log entry below and
+memory `project-auth-supabase`. **Prior focus:** **GARDENS-ONLY PIVOT + STYLE PICKER — backend
+Postman-verified, frontend built (2026-07-08).** Flow: Create (photo + optional text) → **Choose a style** (`GET /styles` grid) → Generate →
 Results. Pipeline: `analyzeScene (landscape+observations) → enhancePrompt (style-driven) → editImage (nano,
 positive masking) → extractKeyterms → Amazon`. **Owed: user runs mobile `tsc --noEmit` + live Expo Go
 verify** (start `dev:mobile` first so typed routes pick up `/style`). Then style preview images + quality
@@ -692,3 +697,61 @@ more verify pass). Deferred backend: B3 hardening + per-step unit tests (no test
 
 **▶ Resume next session at:** live-verify the mobile style flow in Expo Go; then style preview images +
 quality levers, then B3.
+
+### 2026-07-10 — Model 4 redesign: grouped + priced products, non-fatal
+- **Goal (user):** Model 4 (product extraction) should return a **general INR price range** per item and
+  **group items by category** (lighting / plants / …) for a scannable "shop the look".
+- **Grouping approach (researched + chosen):** model emits the **whole grouped structure in ONE pass**
+  (array of `{ group, items }`) — it invents the category names itself (no fixed list) but names each
+  group once, so the naïve "Lights vs Lighting" duplicate-bucket problem can't occur. Belt-and-suspenders:
+  runner-side merge of any same-name groups + cross-group keyterm dedupe.
+- **Decisions locked:** price = AI-estimated `priceMin`/`priceMax` **numbers, INR**, rendered `₹1,000–3,000`
+  (no "(est.)" per user); **nested** contract (`productGroups`, not flat `products`); **Model 4 bumped to
+  Gemini Flash** (`GEMINI_MODEL` default `gemini-2.5-flash-lite → gemini-2.5-flash`); **model decides count**
+  (safety cap 15 items); **NON-FATAL** — on any error/empty the runner falls back to a curated garden set
+  (`FALLBACK_PRODUCT_GROUPS`) so a good edited image always ships (Gemini's last step won't sink the job).
+- **Changes:**
+  - `packages/contract`: `Product` gains optional `priceMin`/`priceMax`; new `ProductGroup`;
+    `JobResult.products` → **`productGroups`**. (Rebuild the contract pkg — stale-`dist` gotcha.)
+  - `extractKeyterms.ts`: nested `responseSchema` (groups→priced items), rewritten garden system prompt
+    (self-chosen coherent groups + INR ranges), Zod + normalize (merge dup groups, dedupe terms, price
+    sanity/swap, cap 15), throws on empty. Exports `ExtractedGroup`/`ExtractedItem` + `FALLBACK_PRODUCT_GROUPS`.
+  - `runner.ts`: step 4 wrapped in try/catch → fallback; step 5 builds `ProductGroup[]` with per-item Amazon URLs.
+  - `config.ts`: `gemini.model` default → `gemini-2.5-flash`.
+  - Mobile: `product-row.tsx` shows `₹min–max` (INR `en-IN`, hidden when unpriced → showcase unaffected);
+    `job/[id].tsx` renders `productGroups` as section-header groups. `store/jobs.ts` unchanged (imports `JobResult`).
+  - Docs: `architecture.md` §2 (Model 4 → Flash), §4 diagram, §6 contract, §7 `GEMINI_MODEL` default.
+- ⚠️ **Owed (user runs):** `pnpm --filter @clickretina/contract build` **then** `pnpm build:api`; mobile
+  `tsc --noEmit`; set/confirm `apps/api/.env` `GEMINI_MODEL=gemini-2.5-flash` (or unset to take the new
+  default), restart api+worker. **Postman:** run a real job → `GET /jobs/:id` result has `productGroups`
+  with grouped, INR-priced items; force a Model 4 failure (e.g. bad `GEMINI_MODEL`) → job still **completes**
+  with fallback products + the edited image. Then live Expo Go: detail screen shows grouped sections + ₹ prices.
+
+### 2026-07-10 (cont.) — NEW WORKSTREAM: Auth via Supabase (login/signup + user DB)
+> Auth was out of scope in phase 1 (`architecture.md` §8); now being added. Full detail + decisions live in
+> memory `project-auth-supabase`. Executed in small verified steps. **Steps 1–3 DONE & user-verified.**
+- **Step 1 — client foundation:** `apps/mobile/src/lib/supabase.ts` (createClient + AsyncStorage session +
+  AppState auto-refresh). Env `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_KEY` (modern **publishable**
+  key `sb_publishable_…`) in `apps/mobile/.env`. ⚠️ Install native/Expo deps with **`expo install`**, NOT
+  `pnpm add` (SDK-version match — AsyncStorage 3.x vs Go's 2.2.0 caused `Native module is null`).
+- **Step 2 — email/password auth + gating:** `store/auth.ts`, `hooks/use-auth-listener.ts`, `lib/auth.ts`
+  (signUp/signIn/signOut), `app/(auth)/{_layout,sign-in,sign-up}.tsx`. Root `_layout.tsx` uses Expo Router
+  **`Stack.Protected` guards** (`(tabs)/style/job` when authed, `(auth)` when not) + splash held until session
+  known. Confirm-email ON → session only after confirm → gating handles it. Logout on Home footer (temporary).
+- **Step 3 — email-confirmation deep link (PKCE):** `flowType:'pkce'`; signUp passes
+  `emailRedirectTo = Linking.createURL('auth-callback')`; new `hooks/use-auth-deep-link.ts`
+  (`Linking.useURL()` → `exchangeCodeForSession`) + `app/auth-callback.tsx` "Confirming…" screen (outside
+  both guards). Supabase allow-list: `clickretina://auth-callback`.
+- **Switched to a DEV BUILD** (off Expo Go) via local `expo run:android` — `app.json` package/bundle id
+  `com.clickretina.app`; native folders gitignored (CNG). ⚠️ Windows CMake path wall on
+  react-native-worklets → fixed with **`nodeLinker: hoisted`** in `pnpm-workspace.yaml` (needs clean
+  reinstall + delete `apps/mobile/android`). Dev-client install hit a transient `@expo/schema-utils@57.0.1`
+  propagation error (retry fixed it). EAS is the fallback if local builds keep failing.
+- **Decisions for TOMORROW (Step 4 + UI overhaul):** (a) **profiles** table + RLS + `handle_new_user` trigger
+  (user runs SQL); (b) **display-name** field at sign-up (`options.data.full_name`, Google auto-fills later);
+  (c) **UI/UX:** top tabs → **modern bottom nav**; add a **top bar → Settings page** holding the user-profile
+  section (all user info) + logout (moved off Home). Then Step 5 (API `jose`/JWKS → user-owned jobs) + Step 6
+  (Google OAuth).
+
+**▶ Resume next session (2026-07-11): Step 4 (profiles + display name) + the UI overhaul (bottom nav +
+Settings page).** Backend Model-4 verify (above) still owed if not yet run.

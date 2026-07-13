@@ -22,8 +22,9 @@ export const config = {
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
-    // Default model for Gemini calls (Model 3 key-term extraction / visualization uses this).
-    model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite',
+    // Default model for Gemini calls (Model 4 product extraction/grouping uses this).
+    // On Flash (not Flash-Lite) for better grouping coherence + price estimation.
+    model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
     // Model 1 (scene analysis, vision) runs on the stronger Flash model for better scene understanding.
     model1: process.env.GEMINI_MODEL_1 ?? 'gemini-2.5-flash',
     // Model 2 (prompt enhancement, text) also on Flash for faithful instruction-following.

@@ -114,9 +114,6 @@ export default function LandingScreen() {
           </Fragment>
         ))}
       </View>
-
-      {/* Footer bar (intentionally empty for now) */}
-      <View style={styles.bottomBar} />
     </ScrollView>
   );
 }
@@ -277,11 +274,4 @@ const styles = StyleSheet.create({
   stepBody: { fontSize: 14, lineHeight: 20, color: '#6C6C70', textAlign: 'center' },
   connector: { alignItems: 'center', gap: 5, paddingVertical: 12 },
   connectorDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#B7D0EC' },
-  bottomBar: {
-    height: 64,
-    marginTop: 16,
-    marginHorizontal: -16, // bleed to screen edges despite the container padding
-    marginBottom: -16,
-    backgroundColor: '#000',
-  },
 });

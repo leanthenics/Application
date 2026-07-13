@@ -1,4 +1,4 @@
-import type { JobResult, Product } from '@clickretina/contract';
+import type { JobResult, ProductGroup } from '@clickretina/contract';
 import type { JobData } from '../jobs/shared.js';
 import { getStyle } from '../styles/catalog.js';
 import type { PipelineContext } from './context.js';
@@ -6,7 +6,11 @@ import { runStep } from './step.js';
 import { analyzeSceneStep } from './steps/analyzeScene.js';
 import { enhancePromptStep } from './steps/enhancePrompt.js';
 import { editImageStep } from './steps/editImage.js';
-import { extractKeytermsStep } from './steps/extractKeyterms.js';
+import {
+  extractKeytermsStep,
+  FALLBACK_PRODUCT_GROUPS,
+  type ExtractedGroup,
+} from './steps/extractKeyterms.js';
 import { buildAmazonUrl } from './amazon.js';
 
 /**
@@ -52,22 +56,35 @@ export async function runPipeline(data: JobData, ctx: PipelineContext): Promise<
     ctx,
   );
 
-  // Step 4 — read shoppable product key-terms from the edited image.
-  const keyterms = await runStep(
-    extractKeytermsStep,
-    { image: edited.image, mimeType: edited.mimeType },
-    ctx,
-  );
+  // Step 4 — read shoppable products (grouped, priced) from the edited image.
+  // NON-FATAL: Gemini's last step must not sink a good render. On any error or an
+  // empty result, fall back to a curated garden product set so the image still ships.
+  let extracted: ExtractedGroup[];
+  try {
+    extracted = await runStep(extractKeytermsStep, { image: edited.image, mimeType: edited.mimeType }, ctx);
+  } catch (err) {
+    console.warn(
+      `[pipeline] ${ctx.jobId} extractKeyterms failed — using fallback products: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+    extracted = FALLBACK_PRODUCT_GROUPS;
+  }
 
-  // Step 5 — build the affiliate search URL for each key-term.
-  const products: Product[] = keyterms.map((keyterm) => ({
-    keyterm,
-    amazonUrl: buildAmazonUrl(keyterm),
+  // Step 5 — build the affiliate search URL for each item, preserving the groups.
+  const productGroups: ProductGroup[] = extracted.map((g) => ({
+    group: g.group,
+    items: g.items.map((it) => ({
+      keyterm: it.keyterm,
+      amazonUrl: buildAmazonUrl(it.keyterm),
+      ...(it.priceMin !== undefined ? { priceMin: it.priceMin } : {}),
+      ...(it.priceMax !== undefined ? { priceMax: it.priceMax } : {}),
+    })),
   }));
 
   return {
     outputImage: edited.image,
     mimeType: edited.mimeType,
-    products,
+    productGroups,
   };
 }

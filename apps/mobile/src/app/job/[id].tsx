@@ -106,7 +106,7 @@ export default function JobDetailScreen() {
   }
 
   // Completed
-  const { mimeType, outputImage, products } = job.result;
+  const { mimeType, outputImage, productGroups } = job.result;
   const uri = `data:${mimeType};base64,${outputImage}`;
 
   return (
@@ -115,8 +115,13 @@ export default function JobDetailScreen() {
       <Text style={styles.compareHint}>Drag the divider to compare before / after</Text>
       {job.styleLabel ? <Text style={styles.styleLabel}>{job.styleLabel} garden</Text> : null}
       <Text style={styles.sectionTitle}>Shop the look</Text>
-      {products.map((p, i) => (
-        <ProductRow key={`${p.keyterm}-${i}`} product={p} />
+      {productGroups.map((g) => (
+        <View key={g.group} style={styles.group}>
+          <Text style={styles.groupTitle}>{g.group}</Text>
+          {g.items.map((p, i) => (
+            <ProductRow key={`${p.keyterm}-${i}`} product={p} />
+          ))}
+        </View>
       ))}
     </ScrollView>
   );
@@ -131,6 +136,8 @@ const styles = StyleSheet.create({
   compareHint: { fontSize: 13, color: '#8E8E93', textAlign: 'center' },
   styleLabel: { fontSize: 15, fontWeight: '600', color: '#208AEF', textAlign: 'center' },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000', marginTop: 4 },
+  group: { gap: 8, marginTop: 4 },
+  groupTitle: { fontSize: 15, fontWeight: '700', color: '#3C3C43', marginTop: 4 },
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',

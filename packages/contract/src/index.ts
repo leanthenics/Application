@@ -20,6 +20,9 @@ import { z } from 'zod';
  *   - 2026-07-08 — Gardens-only + style picker: CreateJobRequest gains `style` (server-catalog
  *                  id, validated API-side) and `prompt` becomes optional. Style ids live in a
  *                  hand-editable server manifest (GET /styles), deliberately NOT enumerated here.
+ *   - 2026-07-10 — Model 4 grouping + price: Product gains optional priceMin/priceMax (INR,
+ *                  AI-estimated approximate range). JobResult.products (flat) → productGroups
+ *                  (AI-generated groups, single-pass). ProductGroup added.
  *
  * Still pending (added when required):
  *   schemas: ApiError
@@ -68,13 +71,26 @@ export type JobStatus = z.infer<typeof JobStatus>;
 export const Product = z.object({
   keyterm: z.string(),
   amazonUrl: z.url(),
+  // Approximate price range (INR), AI-estimated by Model 4 — general, not exact.
+  // Optional: other producers of Product (e.g. the /showcase manifest) omit them.
+  priceMin: z.number().nonnegative().optional(),
+  priceMax: z.number().nonnegative().optional(),
 });
 export type Product = z.infer<typeof Product>;
+
+// A group of shoppable products under one AI-generated category label (e.g.
+// "Lighting", "Plants & Greenery"). Model 4 emits the groups in a single pass, so
+// each label is coherent (no near-duplicate "Lights" vs "Lighting" buckets).
+export const ProductGroup = z.object({
+  group: z.string(),
+  items: z.array(Product),
+});
+export type ProductGroup = z.infer<typeof ProductGroup>;
 
 export const JobResult = z.object({
   outputImage: z.string(), // base64 (no data-uri prefix)
   mimeType: OutputImageMime, // edited image's real content-type (may be webp)
-  products: z.array(Product),
+  productGroups: z.array(ProductGroup),
 });
 export type JobResult = z.infer<typeof JobResult>;
 
