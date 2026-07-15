@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { signInWithEmail } from '@/lib/auth';
+import { GoogleAuthButton } from '@/components/google-auth-button';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
@@ -70,6 +71,12 @@ export default function SignInScreen() {
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Log in</Text>}
         </Pressable>
 
+        <Link href="/forgot-password" style={styles.forgot}>
+          Forgot password?
+        </Link>
+
+        <GoogleAuthButton onError={setError} />
+
         <View style={styles.footer}>
           <Text style={styles.muted}>New here? </Text>
           <Link href="/sign-up" style={styles.link}>
@@ -107,6 +114,7 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { backgroundColor: '#B7D6F7' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  forgot: { color: '#208AEF', fontSize: 15, fontWeight: '600', textAlign: 'center', marginTop: 4 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
   muted: { color: '#8E8E93', fontSize: 15 },
   link: { color: '#208AEF', fontSize: 15, fontWeight: '600' },

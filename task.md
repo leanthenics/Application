@@ -8,12 +8,14 @@
 > **Update this file as we go** — flip the box and add notes when a task is done.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
-**Current focus (2026-07-13):** **AUTH via Supabase — Steps 1–5 DONE & user-verified.** Step 5 = API
-verifies the Supabase ES256 JWT locally via `jose`/JWKS, `/jobs` require `Authorization: Bearer`, jobs are
-stamped with + scoped to `userId` (cross-user GET → 404); mobile attaches `session.access_token`; jobs
-store clears on logout. **Only Step 6 (Google OAuth) remains** in the auth workstream. Also still owed:
-the **Model-4 grouped/priced products** live verification (uncommitted; see 2026-07-10 entry). See the auth session-log entry below and
-memory `project-auth-supabase`. **Prior focus:** **GARDENS-ONLY PIVOT + STYLE PICKER — backend
+**Current focus (2026-07-14):** **AUTH via Supabase — Steps 1–5 DONE, verified & committed** (Step 5 at
+`2955220`); **forgot/reset-password DONE & user-verified** (2026-07-14, signed-out PKCE flow — see entry
+below; **uncommitted**). **NOW STARTING Step 6 (Google OAuth)** = the last auth piece. Approach locked =
+**native `@react-native-google-signin/google-signin` → `supabase.auth.signInWithIdToken`** (not browser
+OAuth). See the 2026-07-13 "Step 6 on hold" entry for the full A/B/C plan + captured SHA-1
+(`06:AA:50:23:89:13:43:11:2D:77:3F:8F:95:9C:D7:6D:E0:5B:B8:B6`, pkg `com.clickretina.app`). Also still owed:
+the **Model-4 grouped/priced products** live verification (committed at `8892cb2` but never verified); commit
+the forgot-password work. See memory `project-auth-supabase`. **Prior focus:** **GARDENS-ONLY PIVOT + STYLE PICKER — backend
 Postman-verified, frontend built (2026-07-08).** Flow: Create (photo + optional text) → **Choose a style** (`GET /styles` grid) → Generate →
 Results. Pipeline: `analyzeScene (landscape+observations) → enhancePrompt (style-driven) → editImage (nano,
 positive masking) → extractKeyterms → Amazon`. **Owed: user runs mobile `tsc --noEmit` + live Expo Go
@@ -812,3 +814,94 @@ commit the uncommitted auth + Model-4 work.
 
 **▶ Resume next session at: Step 6 (Google OAuth)** — the last auth piece. Also still owed: the Model-4
 grouped/priced-products live verification (now committed at `8892cb2` but never verified); **commit Step 5.**
+
+### 2026-07-13 (cont. 2) — Auth Step 6 (Google OAuth) STARTED → ON HOLD (awaiting company credentials)
+- **Verified state at session start:** Step 5 is now **committed** (`2955220` "backend middleware added for
+  token"); working tree clean. So the only auth piece left is Step 6.
+- **Approach locked (user chose, after being shown both):** **NATIVE `@react-native-google-signin/
+  google-signin`** → `supabase.auth.signInWithIdToken({ provider:'google', token: idToken })` (native Android
+  account picker, no browser). Rejected the browser-based `signInWithOAuth`+deep-link path. Verified the flow
+  against current Supabase (`auth-google`) + react-native-google-signin Expo docs.
+- **On hold reason:** user does **not yet have the Google Cloud OAuth client IDs** — they're being provided by
+  the **company**. Nothing was coded/edited this session (approval gate; and the code is env-driven on IDs we
+  don't have). Resume once the Web + Android client IDs (and Web secret) arrive.
+- **Captured for resume — debug SHA-1 of the dev keystore** (`~/.android/debug.keystore`, alias
+  `androiddebugkey`, storepass `android`): **`06:AA:50:23:89:13:43:11:2D:77:3F:8F:95:9C:D7:6D:E0:5B:B8:B6`**.
+  Android package/bundle id = **`com.clickretina.app`**. (Play-Store production SHA-1 differs — add later.)
+- **PART A — dashboard setup (user, blocks the code):** (A1) SHA-1 ✅ captured above. (A2) Google Cloud →
+  OAuth consent screen (External, Testing + add self as test user) → create **Web** OAuth client
+  (→ `webClientId` + secret; no redirect URIs needed for native) AND **Android** OAuth client (package
+  `com.clickretina.app` + the SHA-1). (A3) Supabase → Auth → Providers → **Google**: enable, paste **Web**
+  client ID + secret, add **both** Web + Android client IDs to **Authorized Client IDs**. iOS client deferred
+  (Android dev build only → plugin `iosUrlScheme` not needed yet).
+- **PART B — code (planned, NOT yet done):** (1) `expo install @react-native-google-signin/google-signin`
+  (native module → needs `expo run:android` rebuild, not just Metro). (2) `app.json` → add the config plugin.
+  (3) `apps/mobile/.env` (+`.env.example`) → `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`. (4) `src/lib/auth.ts` → new
+  `signInWithGoogle()` (`configure({webClientId})` once → `hasPlayServices` → `signIn` → `signInWithIdToken`;
+  friendly cancel/error). (5) `(auth)/sign-in.tsx` + `(auth)/sign-up.tsx` → "Continue with Google" button + an
+  "or" divider. Session propagates via the existing `onAuthStateChange`→guard (no new nav).
+- **PART C — user runs:** `expo run:android` (rebuild for the native dep) → tap Continue with Google → native
+  picker → lands in app; Settings shows the Google name; logout → sign-in.
+- ⚠️ **Trigger note:** `handle_new_user` copies `raw_user_meta_data->>'full_name'`; Google may send `name`
+  instead — if the profile name is blank after a Google signup, change the trigger to
+  `coalesce(..->>'full_name', ..->>'name')` (small SQL the user runs).
+
+### 2026-07-14 — Auth: forgot/reset password (signed-out flow) — DONE & user-verified live
+- **Scope (user):** signed-out **forgot password** only (no Settings change-password); **same-device** PKCE
+  (verifier stored locally → link must open on the requesting device). Google Step 6 flow was confirmed
+  working by the user previously and stays on hold for credentials.
+- **Mechanics = identical to the existing PKCE email-confirmation flow**, just landing on a new-password
+  screen instead of the app: `resetPasswordForEmail(email,{redirectTo})` → emailed `<scheme>://
+  reset-password?code=…` → the global `useAuthDeepLink` exchanges the code → **recovery session** →
+  new-password screen → `updateUser({password})` → into app. Grounded against the app's proven confirmation
+  flow + a doc check (the newer Supabase `token_hash`/`verifyOtp` path is web-server-only; native uses `?code=`).
+- **The one wrinkle handled:** the recovery session flips `isAuthed` true, so `reset-password` is declared
+  **OUTSIDE both `Stack.Protected` guards** (next to `auth-callback`) so the app group can't swallow it.
+- **Changes (all `apps/mobile`, pure JS — no native dep, Metro-only):**
+  - `lib/auth.ts`: `export const resetRedirectTo = Linking.createURL('reset-password')`;
+    `sendPasswordReset(email)` (wraps `resetPasswordForEmail` + logs the redirect for the allow-list);
+    `updatePassword(pw)` (wraps `updateUser`). Removed the stray leading blank line.
+  - `app/(auth)/forgot-password.tsx` **(new)**: email input → send → "check your email" state.
+  - `app/reset-password.tsx` **(new, outside guards)**: waits for the recovery session (spinner + 8s
+    "link expired" fallback → forgot-password), then new-password + confirm → `updatePassword` → `replace('/')`.
+  - `app/(auth)/sign-in.tsx`: "Forgot password?" link → `/forgot-password`.
+  - `(auth)/_layout.tsx`: registered `forgot-password`. root `_layout.tsx`: registered `reset-password`
+    outside the guards. `use-auth-deep-link.ts` **unchanged** (already exchanges any `?code=`).
+- ⚠️ **Supabase dashboard (user runs):** add **`clickretina://reset-password`** (+ Expo Go
+  `exp://…/--/reset-password` if testing in Go) to Auth → URL Configuration → Redirect URLs. Reset-password
+  email template default (`{{ .ConfirmationURL }}`) works with PKCE; customize copy optionally.
+- ✅ **User-verified live (2026-07-14):** Sign in → **Forgot password?** → email → tapped emailed link on
+  the same device → **Set a new password** screen → updated → dropped into app → logout → signed in with the
+  new password. Supabase Redirect URL `clickretina://reset-password` added. **Code UNCOMMITTED as of this note.**
+
+### 2026-07-14 (cont.) — Auth Step 6 (Google OAuth) — CODE WRITTEN (env-driven), awaiting credentials + rebuild
+- **Credentials still not in hand** (company owed the Google Cloud OAuth IDs); dashboards not set up yet. Per
+  user, wrote **all the code now** so it's ready the instant the Web/Android client IDs arrive — the code is
+  env-gated and the Google button stays hidden until `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` is set.
+- **Approach = native id-token** (locked earlier): `@react-native-google-signin/google-signin` account picker
+  → Google ID token → `supabase.auth.signInWithIdToken({ provider:'google', token })`. Verified the current
+  library API vs docs: `signIn()` now returns `{ type, data }` → use `isSuccessResponse(res)` →
+  `res.data.idToken` (the old flat `{ idToken }` shape is gone); errors via `isErrorWithCode` + `statusCodes`.
+- **Code changes (all `apps/mobile`):**
+  - `lib/auth.ts`: `signInWithGoogle()` (`configure({webClientId})` once → `hasPlayServices` → `signIn` →
+    `signInWithIdToken`; swallows SIGN_IN_CANCELLED/IN_PROGRESS, friendly Play-Services error) + exported
+    `googleSignInEnabled` (env present). Uses the **WEB** client id (`EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`).
+  - `components/google-auth-button.tsx` **(new)**: "or" divider + "Continue with Google" (Ionicons
+    `logo-google`), own loading, surfaces errors via `onError`; **renders null when unconfigured**.
+  - `(auth)/sign-in.tsx` + `(auth)/sign-up.tsx`: drop in `<GoogleAuthButton onError={setError} />`.
+  - `app.json`: added config plugin `"@react-native-google-signin/google-signin"` (bare string; iOS
+    `iosUrlScheme` deferred — Android-only dev build). `.env.example`: documented the new var.
+- ⚠️ **`lib/auth.ts` now imports the native module → `tsc`/Metro will error until the dep is installed.** That
+  install (`expo install @react-native-google-signin/google-signin`) is **Part C step 1** below and needs an
+  `expo run:android` **rebuild** (native module — not a JS-only Metro reload).
+- **PART A — dashboards (user, blocks testing):** Google Cloud → OAuth consent screen (External, Testing +
+  self as test user) → create **Web** OAuth client (→ webClientId + secret) AND **Android** OAuth client
+  (package `com.clickretina.app` + debug SHA-1 `06:AA:50:23:89:13:43:11:2D:77:3F:8F:95:9C:D7:6D:E0:5B:B8:B6`).
+  Supabase → Auth → Providers → **Google**: enable, paste **Web** ID + secret, add **BOTH** Web + Android IDs
+  to **Authorized Client IDs**.
+- **PART C — user runs (once A done + IDs in `.env`):** `expo install @react-native-google-signin/
+  google-signin` → set `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `apps/mobile/.env` → `expo run:android` (rebuild)
+  → tap Continue with Google → native picker → lands in app; Settings shows the Google name; logout → sign-in.
+- ⚠️ **Trigger note (still applies):** `handle_new_user` copies `raw_user_meta_data->>'full_name'`; Google may
+  send `name` — if the profile name is blank after a Google signup, change the trigger to
+  `coalesce(..->>'full_name', ..->>'name')` (small SQL).

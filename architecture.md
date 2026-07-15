@@ -204,5 +204,8 @@ steps; live detail/decisions in memory `project-auth-supabase`.
   is unaffected (auth rides in the `Authorization` header).
 - **Navigation change (planned):** the top-tab nav (Home | Create | Results) moves to a modern **bottom
   navigation bar**, plus a **top bar → Settings page** (user-profile info + logout).
-- **Status:** Steps 1–3 done (client, email auth, confirmation deep link). Next: profiles (4),
-  API token verification (5), Google (6).
+- **Password reset:** signed-out **forgot/reset-password** flow added (2026-07-14, user-verified) — reuses
+  the same PKCE deep link (`clickretina://reset-password`) → `updateUser({ password })`. Same-device only
+  (PKCE verifier is stored locally).
+- **Status:** Steps 1–5 done & verified (client, email auth, confirmation deep link, profiles, API token
+  verification) + forgot-password. **Step 6 (Google OAuth) in progress.**

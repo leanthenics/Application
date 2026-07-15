@@ -52,6 +52,10 @@ export default function RootLayout() {
         {/* Always reachable — the email-confirmation link lands here before a
             session exists, so it can't sit behind either auth guard. */}
         <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+        {/* Always reachable — the password-reset link lands here. The recovery
+            session it creates flips isAuthed true, so this screen must stay
+            outside the guards (else the app group would swallow it). */}
+        <Stack.Screen name="reset-password" options={{ headerShown: false }} />
       </Stack>
     </GestureHandlerRootView>
   );
