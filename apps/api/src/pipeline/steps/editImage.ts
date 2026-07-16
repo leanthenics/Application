@@ -26,6 +26,12 @@ export interface EditImageInput {
   prompt: string;
   /** Model 1's scene analysis (editable zones + fixed elements). */
   scene: SceneAnalysis;
+  /**
+   * Per-style fullness knob (0..1) — how many items nano adds. Resolved by the
+   * runner from the chosen style (falls back to the global config.gemini.richness
+   * when the style doesn't set its own). Optional so the step stays callable alone.
+   */
+  richness?: number;
 }
 
 export interface EditImageOutput {
@@ -60,7 +66,7 @@ function richnessDirective(richness: number): string {
  * what keeps the original background ~80–90%+ intact. `scene` is optional so this stays
  * callable in isolation, but the runner always provides it.
  */
-function composeEditPrompt(instruction: string, scene?: SceneAnalysis): string {
+function composeEditPrompt(instruction: string, richness: number, scene?: SceneAnalysis): string {
   const preserve =
     scene && scene.fixedElements.length
       ? scene.fixedElements.join('; ')
@@ -77,7 +83,7 @@ function composeEditPrompt(instruction: string, scene?: SceneAnalysis): string {
     ...(scene?.landscape ? [`Also keep the surrounding setting unchanged: ${scene.landscape}`] : []),
     'Also keep the exact camera angle, framing, perspective, zoom, and image dimensions identical to the original.',
     '',
-    `WHAT TO ADD — ${richnessDirective(config.gemini.richness)} that fulfill this request, and nothing outside it: "${instruction}"`,
+    `WHAT TO ADD — ${richnessDirective(richness)} that fulfill this request, and nothing outside it: "${instruction}"`,
     ...(zones
       ? ['', 'Place the new items ONLY into these empty areas of the photo:', zones]
       : ['', 'Place the new items only into the clearly empty areas of the photo.']),
@@ -92,12 +98,12 @@ export const editImageStep: PipelineStep<EditImageInput, EditImageOutput> = {
   name: 'editImage',
   async run(input) {
     const dataUri = `data:${input.mimeType};base64,${input.image}`;
-    console.log(
-      `[editImage] richness=${config.gemini.richness} → "${richnessDirective(config.gemini.richness)}"`,
-    );
+    // Per-style richness when the runner supplies it; else the global default.
+    const richness = input.richness ?? config.gemini.richness;
+    console.log(`[editImage] richness=${richness} → "${richnessDirective(richness)}"`);
     const { base64, mimeType } = await editImage({
       dataUri,
-      prompt: composeEditPrompt(input.prompt, input.scene),
+      prompt: composeEditPrompt(input.prompt, richness, input.scene),
       fallbackMime: input.mimeType,
     });
     // `editImage` already guards empty output; guard again defensively.

@@ -4,69 +4,79 @@
     "label": "Modern / Minimalist",
     "blurb": "Clean lines, structured, open space",
     "imageUrl": "",
-    "guidance": "A modern, minimalist garden: clean geometric lines, concrete, steel and smooth stone, restrained architectural planting (ornamental grasses, clipped hedges, a few sculptural specimens), a limited green-and-neutral palette, and generous open negative space."
+    "guidance": "A modern, minimalist garden: clean geometric lines, concrete, steel and smooth stone, restrained architectural planting (ornamental grasses, clipped hedges, a few sculptural specimens), a limited green-and-neutral palette, and generous open negative space.",
+    "richness": 0.6
   },
   {
     "id": "zen",
     "label": "Japanese Zen",
     "blurb": "Calm, gravel, stone, water",
     "imageUrl": "",
-    "guidance": "A calm Japanese zen garden: raked fine gravel, carefully placed rocks and stepping stones, moss, a simple water basin, acers and bamboo, muted greens, and lots of tranquil negative space."
+    "guidance": "A calm Japanese zen garden: raked fine gravel, carefully placed rocks and stepping stones, moss, a simple water basin, acers and bamboo, muted greens, and lots of tranquil negative space.",
+    "richness": 0.3
   },
   {
     "id": "cottage",
     "label": "English Cottage",
     "blurb": "Romantic, dense flower borders",
     "imageUrl": "",
-    "guidance": "A romantic English cottage garden: dense informal mixed borders overflowing with roses, foxgloves, delphiniums and perennials, soft pastel and rich blooms, brick or stone paths, and a charming, abundant, lived-in feel."
+    "guidance": "A romantic English cottage garden: dense informal mixed borders overflowing with roses, foxgloves, delphiniums and perennials, soft pastel and rich blooms, brick or stone paths, and a charming, abundant, lived-in feel.",
+    "richness": 0.35
   },
   {
     "id": "mediterranean",
     "label": "Mediterranean",
     "blurb": "Warm, terracotta, drought-friendly",
     "imageUrl": "",
-    "guidance": "A warm Mediterranean garden: terracotta pots, gravel and stone, olive trees, lavender, rosemary and citrus, drought-tolerant planting, sun-baked earthy tones, and relaxed rustic charm."
+    "guidance": "A warm Mediterranean garden: terracotta pots, gravel and stone, olive trees, lavender, rosemary and citrus, drought-tolerant planting, sun-baked earthy tones, and relaxed rustic charm.",
+    "richness": 0.35
   },
   {
     "id": "tropical",
     "label": "Tropical",
     "blurb": "Lush, bold foliage, jungle feel",
     "imageUrl": "",
-    "guidance": "A lush tropical garden: large-leaf foliage, palms, banana plants, ferns and bird-of-paradise, dense layered greenery, bold vivid greens, and an immersive jungle canopy feel."
+    "guidance": "A lush tropical garden: large-leaf foliage, palms, banana plants, ferns and bird-of-paradise, dense layered greenery, bold vivid greens, and an immersive jungle canopy feel.",
+    "richness": 0.5
   },
   {
     "id": "desert",
     "label": "Desert / Xeriscape",
     "blurb": "Succulents, cacti, gravel, boulders",
     "imageUrl": "",
-    "guidance": "A desert xeriscape garden: succulents, agaves and sculptural cacti, gravel and decomposed granite ground, weathered boulders, drought-tolerant architectural planting, and warm arid tones."
+    "guidance": "A desert xeriscape garden: succulents, agaves and sculptural cacti, gravel and decomposed granite ground, weathered boulders, drought-tolerant architectural planting, and warm arid tones.",
+    "richness": 0.35
   },
   {
     "id": "farmhouse",
     "label": "Rustic Farmhouse",
     "blurb": "Raised beds, edible, wildflowers",
     "imageUrl": "",
-    "guidance": "A rustic farmhouse garden: raised timber vegetable beds, herbs and edibles, wildflowers, weathered wood and galvanised planters, informal productive charm, and a cosy country feel."
+    "guidance": "A rustic farmhouse garden: raised timber vegetable beds, herbs and edibles, wildflowers, weathered wood and galvanised planters, informal productive charm, and a cosy country feel.",
+    "richness": 0.4
   },
   {
     "id": "coastal",
     "label": "Coastal",
     "blurb": "Grasses, driftwood, breezy",
     "imageUrl": "",
-    "guidance": "A breezy coastal garden: ornamental grasses, sea holly and hardy salt-tolerant planting, driftwood, pebbles and sand-toned gravel, weathered timber, and a light airy seaside palette."
+    "guidance": "A breezy coastal garden: ornamental grasses, sea holly and hardy salt-tolerant planting, driftwood, pebbles and sand-toned gravel, weathered timber, and a light airy seaside palette.",
+    "richness": 0.4
   },
   {
     "id": "boho",
     "label": "Bohemian",
     "blurb": "Eclectic, layered pots, string lights",
     "imageUrl": "",
-    "guidance": "An eclectic bohemian garden: layered mismatched pots and planters, macrame and textiles, string lights and lanterns, colourful cushions, trailing plants, and a warm cosy free-spirited vibe."
+    "guidance": "An eclectic bohemian garden: layered mismatched pots and planters, macrame and textiles, string lights and lanterns, colourful cushions, trailing plants, and a warm cosy free-spirited vibe.",
+    "richness": 0.45
   },
   {
     "id": "woodland",
     "label": "Woodland / Natural",
     "blurb": "Native, shade, naturalistic",
     "imageUrl": "",
-    "guidance": "A naturalistic woodland garden: native shade planting, ferns, hostas and foxgloves, dappled light, bark and stone informal paths, mossy logs, and a wild, effortless natural feel."
+    "guidance": "A naturalistic woodland garden: native shade planting, ferns, hostas and foxgloves, dappled light, bark and stone informal paths, mossy logs, and a wild, effortless natural feel.",
+    "richness": 0.45
   }
 ]

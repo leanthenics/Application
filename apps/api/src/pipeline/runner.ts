@@ -1,5 +1,6 @@
 import type { JobResult, ProductGroup } from '@clickretina/contract';
 import type { JobData } from '../jobs/shared.js';
+import { config } from '../config.js';
 import { getStyle } from '../styles/catalog.js';
 import type { PipelineContext } from './context.js';
 import { runStep } from './step.js';
@@ -30,6 +31,9 @@ export async function runPipeline(data: JobData, ctx: PipelineContext): Promise<
   const style = await getStyle(data.style);
   const styleLabel = style?.label ?? data.style;
   const styleGuidance = style?.guidance ?? `a ${data.style} garden`;
+  // Per-style fullness; falls back to the global DESIGN_RICHNESS when the style
+  // (or a stale/unknown manifest entry) doesn't set its own.
+  const richness = style?.richness ?? config.gemini.richness;
 
   // Step 1 — analyze the ORIGINAL image: space + positively-framed editable zones.
   const scene = await runStep(
@@ -52,7 +56,7 @@ export async function runPipeline(data: JobData, ctx: PipelineContext): Promise<
   // Step 3 — edit the input image: add into the zones, preserve everything else.
   const edited = await runStep(
     editImageStep,
-    { image: data.image, mimeType: data.mimeType, prompt: enhancedPrompt, scene },
+    { image: data.image, mimeType: data.mimeType, prompt: enhancedPrompt, scene, richness },
     ctx,
   );
 

@@ -29,6 +29,11 @@ const StyleEntry = z.object({
   blurb: z.string().default(''),
   imageUrl: z.string().default(''),
   guidance: z.string().min(1),
+  // Per-style fullness knob (0..1) fed to Model 3 — how many items nano adds.
+  // Optional: when absent the pipeline falls back to the global DESIGN_RICHNESS
+  // (config.gemini.richness). Dense styles (cottage/tropical) set this LOWER since
+  // their guidance already reads "overflowing", so a lower count offsets the flood.
+  richness: z.number().min(0).max(1).optional(),
 });
 export type StyleEntry = z.infer<typeof StyleEntry>;
 

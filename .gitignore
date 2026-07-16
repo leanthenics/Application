@@ -12,6 +12,9 @@ dist/
 .env.*.local
 *.pem
 
+# Private internal docs (design/planning/security — NEVER commit; kept local only)
+docs/private/
+
 # Logs
 *.log
 npm-debug.log*

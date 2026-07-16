@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-ClickRetina is a mobile app where a user submits **an image of a room/space + a text prompt**, and the backend runs a **3-model AI pipeline** that returns an **edited image** plus **Amazon affiliate search links** for each detected product. See `architecture.md` for the full design and locked phase-1 decisions; `plan.md` for the phased roadmap; `task.md` for the live task checklist and session log.
+ClickRetina is a mobile app where a user submits **an image of a room/space + a text prompt**, and the backend runs a **3-model AI pipeline** that returns an **edited image** plus **Amazon affiliate search links** for each detected product. See `docs/private/architecture.md` for the full design and locked phase-1 decisions; `docs/private/plan.md` for the phased roadmap; `docs/private/task.md` for the live task checklist and session log; `docs/private/security.md` for the pre-launch security/weak-points checklist. (These internal docs live in `docs/private/`, which is **gitignored** — local-only, not committed.)
 
-> **Project status: MVP working end-to-end (as of 2026-07-01).** Backend **B0–B2 complete & user-verified live**: full job lifecycle (`POST /jobs` → BullMQ worker → `GET /jobs/:id` polling) running the real 3-model pipeline (`enhancePrompt → editImage → extractKeyterms → Amazon URLs`) with a real edited image + real product keyterms + affiliate links. Frontend **F0–F2 complete & verified live in Expo Go**: `apps/mobile` Expo SDK 57 app (top-tab nav, capture/resize/submit, results grid + poller + detail). `packages/contract`, `apps/api`, and `apps/mobile` all exist. **Remaining:** frontend **F3 (polish)** + backend **B3 (hardening, incl. tests — no test runner wired yet)**. Always check `task.md` for the current focus and resume point before starting work, and tick off / annotate tasks there as you complete them.
+> **Project status: MVP working end-to-end (as of 2026-07-01).** Backend **B0–B2 complete & user-verified live**: full job lifecycle (`POST /jobs` → BullMQ worker → `GET /jobs/:id` polling) running the real 3-model pipeline (`enhancePrompt → editImage → extractKeyterms → Amazon URLs`) with a real edited image + real product keyterms + affiliate links. Frontend **F0–F2 complete & verified live in Expo Go**: `apps/mobile` Expo SDK 57 app (top-tab nav, capture/resize/submit, results grid + poller + detail). `packages/contract`, `apps/api`, and `apps/mobile` all exist. **Remaining:** frontend **F3 (polish)** + backend **B3 (hardening, incl. tests — no test runner wired yet)**. Always check `docs/private/task.md` for the current focus and resume point before starting work, and tick off / annotate tasks there as you complete them.
 
 ## Repository layout (pnpm workspaces)
 
@@ -29,8 +29,15 @@ pnpm dev:worker         # tsx watch on the BullMQ worker (separate process — n
 pnpm build:api          # tsc build apps/api -> dist/
 pnpm start:api          # node dist/index.js (requires build first)
 pnpm start:worker       # node dist/jobs/worker.js (requires build first)
-pnpm dev:mobile         # expo start on apps/mobile (Expo Go; set apps/mobile/.env first)
+pnpm dev:mobile         # expo start on apps/mobile (Metro for the dev client; set apps/mobile/.env first)
+pnpm android:mobile     # native Android build: expo run:android on apps/mobile (builds + installs the dev client)
+pnpm ios:mobile         # native iOS build: expo run:ios on apps/mobile (macOS only)
 ```
+
+> ⚠️ **Never run `expo` (start / run:android) from the repo root** — always via these `*:mobile` wrappers
+> (or `cd apps/mobile` first). Running Expo from the root makes it treat the monorepo root as the project →
+> a stray `com.anonymous.clickretina` app + root `android/` + an `expo/AppEntry` "cannot resolve ../../App"
+> error. The wrappers use `pnpm --filter @clickretina/mobile …`, which always runs in `apps/mobile`.
 
 The pipeline only runs when **both** `dev:api` and `dev:worker` are up. These root scripts are thin wrappers over `pnpm --filter @clickretina/api <script>` (and `@clickretina/mobile`). To target a specific workspace directly use `pnpm --filter <pkg> <script>`.
 
@@ -65,4 +72,4 @@ The job lifecycle is **async via polling**, backed by Redis only (no DB, no auth
 
 Finished jobs are evicted from Redis after `JOB_TTL_SECONDS` (default 600s / 10 min). Images travel as **base64 in JSON** (no object storage in phase 1); client resizes to 768px JPEG before encoding; API enforces `MAX_BODY_SIZE` (~10mb). Any model failure → job `failed` with a client-safe message. Exact model IDs are env-configurable (`GEMINI_MODEL`, `REPLICATE_MODEL`) and unset by default.
 
-The public contract (request/response shapes in `architecture.md` §6) stayed **stable across the stub worker (B1) → real pipeline (B2)** transition, as the phased plan intended. Keep it that way: any change to those shapes must go through `packages/contract` and stay backward-compatible with the mobile client.
+The public contract (request/response shapes in `docs/private/architecture.md` §6) stayed **stable across the stub worker (B1) → real pipeline (B2)** transition, as the phased plan intended. Keep it that way: any change to those shapes must go through `packages/contract` and stay backward-compatible with the mobile client.

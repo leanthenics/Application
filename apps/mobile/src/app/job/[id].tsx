@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { ApiError, createJob } from '@/api/client';
 import { CompareSlider } from '@/components/compare-slider';
 import { ProductRow } from '@/components/product-row';
+import { WATERMARK_ENABLED } from '@/components/watermark';
 import { prepareForUpload } from '@/lib/image';
 import { useJobsStore } from '@/store/jobs';
 
@@ -108,10 +109,12 @@ export default function JobDetailScreen() {
   // Completed
   const { mimeType, outputImage, productGroups } = job.result;
   const uri = `data:${mimeType};base64,${outputImage}`;
+  // Single gate for the watermark. TODO(premium): && !profile?.isPremium
+  const showWatermark = WATERMARK_ENABLED;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <CompareSlider beforeUri={job.inputThumbUri} afterUri={uri} />
+      <CompareSlider beforeUri={job.inputThumbUri} afterUri={uri} watermark={showWatermark} />
       <Text style={styles.compareHint}>Drag the divider to compare before / after</Text>
       {job.styleLabel ? <Text style={styles.styleLabel}>{job.styleLabel} garden</Text> : null}
       <Text style={styles.sectionTitle}>Shop the look</Text>

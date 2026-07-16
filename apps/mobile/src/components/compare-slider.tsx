@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useRef, useState } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
+import { Watermark } from './watermark';
 
 /**
  * Before/after wipe comparison. The result (after) fills the frame; the original
@@ -22,10 +23,13 @@ export function CompareSlider({
   beforeUri,
   afterUri,
   onInteract,
+  watermark = false,
 }: {
   beforeUri: string;
   afterUri: string;
   onInteract?: () => void;
+  /** Overlay the ClickRetina watermark on the "after" (result) image only. */
+  watermark?: boolean;
 }) {
   const [width, setWidth] = useState(0);
   const [sliderX, setSliderX] = useState(0);
@@ -82,6 +86,10 @@ export function CompareSlider({
           if (w && h) setRatio(w / h);
         }}
       />
+
+      {/* Watermark: sits above the after-image but BEFORE the before-clip below, so it
+          shows only on the generated result and is hidden where "before" is revealed. */}
+      {watermark ? <Watermark /> : null}
 
       {/* Overlay: the original (before), revealed left of the divider. */}
       {width > 0 ? (

@@ -10,6 +10,13 @@
     "build:api": "pnpm --filter @clickretina/api build",
     "start:api": "pnpm --filter @clickretina/api start",
     "start:worker": "pnpm --filter @clickretina/api start:worker",
-    "dev:mobile": "pnpm --filter @clickretina/mobile start"
+    "dev:mobile": "pnpm --filter @clickretina/mobile start",
+    "android:mobile": "pnpm --filter @clickretina/mobile android",
+    "ios:mobile": "pnpm --filter @clickretina/mobile ios"
+  },
+  "dependencies": {
+    "expo": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.0"
   }
 }
