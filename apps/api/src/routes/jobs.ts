@@ -6,6 +6,7 @@ import { requireAuth } from '../http/auth.js';
 import { jobsQueue } from '../jobs/queue.js';
 import { mapState } from '../jobs/status.js';
 import { getStyle } from '../styles/catalog.js';
+import { spendCredit, refundCredit, InsufficientCreditsError } from '../credits/service.js';
 
 export const jobsRouter: RouterType = Router();
 
@@ -26,11 +27,35 @@ jobsRouter.post('/jobs', requireAuth, async (req, res) => {
     return res.status(400).json(apiError('invalid_style', 'Unknown style id'));
   }
 
-  // Opaque UUID as the BullMQ job id (also what the client polls on). Stamp the
-  // authenticated user's id (guaranteed set by requireAuth) so the job is owned.
+  // Opaque UUID as the BullMQ job id (also what the client polls on).
   const jobId = randomUUID();
-  await jobsQueue.add('process', { ...parsed.data, userId: req.userId! }, { jobId });
-  return res.status(202).json({ jobId });
+
+  // Spend 1 credit BEFORE enqueuing — the DB is the source of truth and the atomic
+  // gate for the paid pipeline. No credit ⇒ no job ⇒ no paid AI call. Returns the
+  // new balance so the client can reflect it immediately.
+  let creditsRemaining: number;
+  try {
+    creditsRemaining = await spendCredit(req.userId!, jobId);
+  } catch (err) {
+    if (err instanceof InsufficientCreditsError) {
+      return res
+        .status(402)
+        .json(apiError('insufficient_credits', "You're out of credits. Buy more to keep generating."));
+    }
+    throw err; // unexpected DB error → central 500
+  }
+
+  // Stamp the authenticated user's id (guaranteed set by requireAuth) so the job is
+  // owned. If enqueue fails after we've charged, refund so nobody pays for a job that
+  // never ran.
+  try {
+    await jobsQueue.add('process', { ...parsed.data, userId: req.userId! }, { jobId });
+  } catch (err) {
+    await refundCredit(req.userId!, jobId);
+    throw err;
+  }
+
+  return res.status(202).json({ jobId, creditsRemaining });
 });
 
 /**

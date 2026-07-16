@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { forwardRef, type Ref } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useProfileStore } from '@/store/profile';
 
 /**
  * App shell: an app-wide top bar (brand + Settings gear) over a BOTTOM tab bar
@@ -32,18 +33,41 @@ const TabButton = forwardRef(function TabButton(
   );
 });
 
+/**
+ * Available-credits pill (tap → Buy credits). Reads the balance from the profile
+ * store (kept in sync by use-profile); the DB is the source of truth. Sits beside
+ * the Settings gear in the app-wide top bar.
+ */
+function CreditsPill() {
+  const credits = useProfileStore((s) => s.profile?.credits ?? 0);
+  return (
+    <Pressable
+      style={styles.pill}
+      onPress={() => router.push('/buy-credits')}
+      hitSlop={8}
+      accessibilityLabel={`${credits} credits available, buy more`}>
+      <Ionicons name="flash" size={14} color="#F5A623" />
+      <Text style={styles.pillText}>{credits}</Text>
+      <Ionicons name="add" size={15} color="#208AEF" />
+    </Pressable>
+  );
+}
+
 export default function TabsLayout() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       {/* App-wide top bar */}
       <View style={styles.topBar}>
         <Text style={styles.brand}>ClickRetina</Text>
-        <Pressable
-          onPress={() => router.push('/settings')}
-          hitSlop={12}
-          accessibilityLabel="Settings">
-          <Ionicons name="settings-outline" size={24} color="#1C1C1E" />
-        </Pressable>
+        <View style={styles.topRight}>
+          <CreditsPill />
+          <Pressable
+            onPress={() => router.push('/settings')}
+            hitSlop={12}
+            accessibilityLabel="Settings">
+            <Ionicons name="settings-outline" size={24} color="#1C1C1E" />
+          </Pressable>
+        </View>
       </View>
 
       <Tabs>
@@ -76,6 +100,18 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E5EA',
   },
   brand: { fontSize: 20, fontWeight: '800', color: '#000' },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingLeft: 10,
+    paddingRight: 8,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F2F2F7',
+  },
+  pillText: { fontSize: 14, fontWeight: '700', color: '#1C1C1E' },
   tabList: {
     flexDirection: 'row',
     borderTopWidth: StyleSheet.hairlineWidth,

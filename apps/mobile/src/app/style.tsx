@@ -13,9 +13,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, createJob, getStyles, type Style } from '@/api/client';
+import { refreshProfile } from '@/hooks/use-profile';
 import { prepareForUpload } from '@/lib/image';
 import { useDraftStore } from '@/store/draft';
 import { useJobsStore } from '@/store/jobs';
+import { useProfileStore } from '@/store/profile';
 
 const GAP = 12;
 const PAD = 16;
@@ -30,6 +32,9 @@ export default function StyleScreen() {
   const draft = useDraftStore((s) => s.draft);
   const clearDraft = useDraftStore((s) => s.clearDraft);
   const addJob = useJobsStore((s) => s.addJob);
+  // null = profile not loaded yet (don't block on an unknown balance; the backend
+  // enforces credits and we handle its 402 below).
+  const credits = useProfileStore((s) => s.profile?.credits ?? null);
 
   const [styles_, setStyles] = useState<Style[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +64,12 @@ export default function StyleScreen() {
 
   async function onGenerate() {
     if (!draft || !selectedId) return;
+    // Optimistic gate: known-zero balance → straight to Buy (the backend enforces
+    // this too, and we handle its 402 below in case this client value is stale).
+    if (credits !== null && credits < 1) {
+      router.push('/buy-credits');
+      return;
+    }
     const chosen = styles_.find((s) => s.id === selectedId);
     setSubmitError(null);
     setSubmitting(true);
@@ -70,6 +81,8 @@ export default function StyleScreen() {
         style: selectedId,
         ...(draft.prompt ? { prompt: draft.prompt } : {}),
       });
+      // A credit was just spent — re-sync the balance (pill + Settings) from the DB.
+      void refreshProfile();
       addJob({
         jobId,
         inputThumbUri: draft.imageUri,
@@ -84,6 +97,13 @@ export default function StyleScreen() {
       clearDraft();
       router.replace('/results');
     } catch (e) {
+      // Backend says out of credits (stale client value) → sync + send to Buy.
+      if (e instanceof ApiError && e.code === 'insufficient_credits') {
+        void refreshProfile();
+        setSubmitting(false);
+        router.push('/buy-credits');
+        return;
+      }
       setSubmitError(
         e instanceof ApiError || e instanceof Error
           ? e.message

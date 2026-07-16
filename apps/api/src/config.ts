@@ -25,6 +25,10 @@ export const config = {
     // so there's a single source of truth.
     jwksUrl: supabaseUrl ? `${supabaseUrl}/auth/v1/.well-known/jwks.json` : '',
     issuer: supabaseUrl ? `${supabaseUrl}/auth/v1` : '',
+    // Service-role key — SERVER ONLY, bypasses RLS. Used by the credits DB client
+    // to spend/refund/grant credits (the DB is the source of truth). Never expose
+    // this to the mobile app; it lives only in apps/api/.env.
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
   },
   amazon: {
     tld: process.env.AMAZON_TLD ?? 'in',

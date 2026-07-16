@@ -96,6 +96,56 @@ export async function getStyles(): Promise<Style[]> {
     .filter((s) => s.id && s.label);
 }
 
+/** A purchasable credit pack from the server catalog (GET /credits/packages). */
+export type CreditPackage = {
+  id: string;
+  label: string;
+  credits: number;
+  price: number;
+  currency: string;
+};
+
+/**
+ * GET /credits/packages — the buyable credit packs. Not promoted into
+ * @clickretina/contract (endpoint-first policy), so validated loosely here.
+ */
+export async function getCreditPackages(): Promise<CreditPackage[]> {
+  const res = await fetch(`${BASE_URL}/credits/packages`, {
+    method: 'GET',
+    headers: { ...(await authHeader()) },
+  });
+  if (!res.ok) await throwApiError(res);
+  const body = (await res.json()) as { packages?: unknown };
+  const packages = Array.isArray(body.packages) ? body.packages : [];
+  return packages
+    .map((raw): CreditPackage => {
+      const p = raw as Record<string, unknown>;
+      return {
+        id: String(p.id ?? ''),
+        label: typeof p.label === 'string' ? p.label : '',
+        credits: typeof p.credits === 'number' ? p.credits : 0,
+        price: typeof p.price === 'number' ? p.price : 0,
+        currency: typeof p.currency === 'string' ? p.currency : 'INR',
+      };
+    })
+    .filter((p) => p.id && p.credits > 0);
+}
+
+/**
+ * POST /credits/purchase — grant a pack's credits (no gateway yet). Returns the new
+ * balance. Callers should refreshProfile() afterwards to sync the store.
+ */
+export async function purchaseCredits(packageId: string): Promise<number> {
+  const res = await fetch(`${BASE_URL}/credits/purchase`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify({ packageId }),
+  });
+  if (!res.ok) await throwApiError(res);
+  const body = (await res.json()) as { credits?: unknown };
+  return typeof body.credits === 'number' ? body.credits : 0;
+}
+
 /** A landing-page showcase card: static before/after images + shoppable products. */
 export type ShowcaseProduct = { keyterm: string; amazonUrl: string };
 export type ShowcaseItem = {

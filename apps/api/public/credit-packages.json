@@ -1,0 +1,5 @@
+[
+  { "id": "pack_10", "label": "10 credits", "credits": 10, "price": 99, "currency": "INR" },
+  { "id": "pack_25", "label": "25 credits", "credits": 25, "price": 199, "currency": "INR" },
+  { "id": "pack_50", "label": "50 credits", "credits": 50, "price": 349, "currency": "INR" }
+]

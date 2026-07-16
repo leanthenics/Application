@@ -2,6 +2,7 @@ import { Worker, type Job } from 'bullmq';
 import { JOBS_QUEUE, createRedis, type JobData } from './shared.js';
 import { runPipeline } from '../pipeline/runner.js';
 import { toClientSafeMessage } from '../pipeline/errors.js';
+import { refundCredit } from '../credits/service.js';
 
 /**
  * BullMQ worker — runs as a SEPARATE process (`pnpm dev:worker`). Concurrency 1.
@@ -25,10 +26,13 @@ const worker = new Worker<JobData, Awaited<ReturnType<typeof runPipeline>>>(
     } catch (err) {
       // Full raw detail stays server-side only; client sees the sanitized message.
       console.error(`[worker] pipeline failed ${job.id}:`, err);
+      // Our failure (server/AI/infra) — return the credit spent at job creation so
+      // users never pay for our errors. Idempotent + best-effort in the DB.
+      await refundCredit(job.data.userId, job.id!);
       throw new Error(toClientSafeMessage(err));
     }
   },
-  { connection: createRedis(), concurrency: 1 },
+  { connection: createRedis(), concurrency: 5 },
 );
 
 worker.on('completed', (job) => console.log(`[worker] completed ${job.id}`));

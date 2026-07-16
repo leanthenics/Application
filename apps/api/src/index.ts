@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { jobsRouter } from './routes/jobs.js';
 import { showcaseRouter, showcaseDir } from './routes/showcase.js';
 import { stylesRouter } from './routes/styles.js';
+import { creditsRouter } from './routes/credits.js';
 import { apiError } from './http/errors.js';
 
 const app = express();
@@ -26,6 +27,7 @@ app.get('/health', (_req, res) => {
 app.use(jobsRouter);
 app.use(showcaseRouter);
 app.use(stylesRouter);
+app.use(creditsRouter);
 
 // 404 fallback
 app.use((_req, res) => {

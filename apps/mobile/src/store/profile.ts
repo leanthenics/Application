@@ -10,6 +10,8 @@ export type Profile = {
   id: string;
   full_name: string | null;
   email: string | null;
+  /** Generation credits (source of truth is the DB; read-only here — never mutated client-side). */
+  credits: number;
 };
 
 type ProfileState = {

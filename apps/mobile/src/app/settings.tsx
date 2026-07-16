@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { signOut } from '@/lib/auth';
@@ -52,6 +53,20 @@ export default function SettingsScreen() {
         )}
       </View>
 
+      <View style={styles.creditsCard}>
+        <View style={styles.creditsRow}>
+          <View style={styles.creditsLabelWrap}>
+            <Ionicons name="flash" size={20} color="#F5A623" />
+            <Text style={styles.creditsLabel}>Available credits</Text>
+          </View>
+          <Text style={styles.creditsValue}>{profile?.credits ?? 0}</Text>
+        </View>
+        <Pressable style={styles.buyBtn} onPress={() => router.push('/buy-credits')}>
+          <Ionicons name="add-circle-outline" size={18} color="#fff" />
+          <Text style={styles.buyBtnText}>Buy more credits</Text>
+        </Pressable>
+      </View>
+
       <Pressable
         style={[styles.logout, signingOut && styles.logoutDisabled]}
         onPress={onLogout}
@@ -92,6 +107,21 @@ const styles = StyleSheet.create({
   name: { fontSize: 20, fontWeight: '700', color: '#000' },
   email: { fontSize: 15, color: '#8E8E93' },
   error: { fontSize: 13, color: '#FF3B30', marginTop: 8, textAlign: 'center' },
+  creditsCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18, gap: 16 },
+  creditsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  creditsLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  creditsLabel: { fontSize: 16, color: '#000', fontWeight: '600' },
+  creditsValue: { fontSize: 22, fontWeight: '800', color: '#1C1C1E' },
+  buyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#208AEF',
+  },
+  buyBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   logout: {
     flexDirection: 'row',
     alignItems: 'center',
