@@ -64,7 +64,10 @@ jobsRouter.post('/jobs', requireAuth, async (req, res) => {
  * Unknown or TTL-evicted id → 404.
  */
 jobsRouter.get('/jobs/:id', requireAuth, async (req, res) => {
-  let job = await jobsQueue.getJob(req.params.id);
+  // A path param is always a single string at runtime; newer Express types widen it
+  // to `string | string[]`, so normalize once here.
+  const id = String(req.params.id);
+  let job = await jobsQueue.getJob(id);
   if (!job) {
     return res.status(404).json(apiError('not_found', 'Job not found or expired'));
   }
@@ -81,11 +84,11 @@ jobsRouter.get('/jobs/:id', requireAuth, async (req, res) => {
   // Re-read once so the completed result (or failure reason) is populated.
   if ((status === 'completed' && job.returnvalue == null) ||
       (status === 'failed' && job.failedReason == null)) {
-    job = (await jobsQueue.getJob(req.params.id)) ?? job;
+    job = (await jobsQueue.getJob(id)) ?? job;
   }
 
   const body: GetJobResponse = {
-    jobId: job.id ?? req.params.id,
+    jobId: job.id ?? id,
     status,
     result: status === 'completed' ? (job.returnvalue ?? null) : null,
     error: status === 'failed' ? (job.failedReason ?? 'Job failed') : null,

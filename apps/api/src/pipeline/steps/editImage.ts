@@ -32,6 +32,12 @@ export interface EditImageInput {
    * when the style doesn't set its own). Optional so the step stays callable alone.
    */
   richness?: number;
+  /**
+   * Night mode: when true, the editor also relights the whole scene to night-time
+   * (dark sky, lower ambient light, warm artificial lighting) instead of matching
+   * the photo's existing daytime lighting. Geometry/structure stay preserved.
+   */
+  night?: boolean;
 }
 
 export interface EditImageOutput {
@@ -66,7 +72,12 @@ function richnessDirective(richness: number): string {
  * what keeps the original background ~80–90%+ intact. `scene` is optional so this stays
  * callable in isolation, but the runner always provides it.
  */
-function composeEditPrompt(instruction: string, richness: number, scene?: SceneAnalysis): string {
+function composeEditPrompt(
+  instruction: string,
+  richness: number,
+  scene?: SceneAnalysis,
+  night = false,
+): string {
   const preserve =
     scene && scene.fixedElements.length
       ? scene.fixedElements.join('; ')
@@ -74,6 +85,8 @@ function composeEditPrompt(instruction: string, richness: number, scene?: SceneA
   const zones = scene?.editableZones
     .map((z) => `- ${z.location} — for ${z.suitableFor}`)
     .join('\n');
+
+  if (night) return composeNightEditPrompt(instruction, richness, preserve, zones, scene);
 
   return [
     'This is a precise PHOTO-EDITING task, not image generation. You are given a real photograph. Keep the photograph exactly as it is and ONLY add new objects into specific empty areas. Do not redraw, regenerate, restyle, relight, or re-render any existing part of the photo.',
@@ -94,16 +107,54 @@ function composeEditPrompt(instruction: string, richness: number, scene?: SceneA
   ].join('\n');
 }
 
+/**
+ * Night-mode variant. Unlike the day path (which forbids relighting and matches the
+ * existing daytime light), night mode MUST globally relight the scene — so we can't
+ * say "keep pixels identical". Instead we lock GEOMETRY (positions/shapes/sizes/
+ * materials of every structure + object, and the exact camera/framing), while
+ * explicitly asking for a nighttime re-light + warm artificial lighting. It also
+ * still adds the styled garden items, biased toward evening-appropriate pieces and
+ * tasteful lighting so the added items stay well-lit (and detectable by Model 4).
+ */
+function composeNightEditPrompt(
+  instruction: string,
+  richness: number,
+  preserve: string,
+  zones: string | undefined,
+  scene?: SceneAnalysis,
+): string {
+  return [
+    'This is a precise PHOTO-EDITING task on a real DAYTIME photograph. Do TWO things and nothing else: (1) add new objects into specific empty areas, and (2) change the TIME OF DAY to night by relighting the entire scene as one realistic nighttime photograph. Do NOT move, reshape, resize, replace, or restyle any existing structure or object, and do NOT change the camera.',
+    '',
+    'KEEP THE SAME PLACE — every existing structure and object must stay in the exact same position, shape, size, and material as the original:',
+    preserve + '.',
+    ...(scene?.landscape ? [`Keep the same surrounding setting (its layout is unchanged): ${scene.landscape}`] : []),
+    'Keep the exact camera angle, framing, perspective, zoom, and image dimensions identical to the original.',
+    '',
+    'RE-LIGHT TO NIGHT: replace the daytime sky with a dark evening/night sky; lower the overall ambient light to a natural nighttime level; and add realistic artificial lighting — warm garden and landscape lights, lamps, glowing fixtures, and soft string/festoon lights — casting gentle warm pools of light and natural soft shadows. The scene must clearly read as nighttime while every structure stays recognizably the same place. This must look like one real photograph taken at night, NOT a daytime photo with a dark filter over it.',
+    '',
+    `WHAT TO ADD — ${richnessDirective(richness)} that fulfill this request, and nothing outside it: "${instruction}". Favor items that suit an evening garden and include tasteful, glowing lighting so the added pieces stay clearly lit.`,
+    ...(zones
+      ? ['', 'Place the new items ONLY into these empty areas of the photo:', zones]
+      : ['', 'Place the new items only into the clearly empty areas of the photo.']),
+    '',
+    'Integrate each added item realistically — correct scale and perspective, grounded contact shadows, and lit consistently with the new nighttime lighting — so it looks photographed in the same shot, not pasted in.',
+    '',
+    'Do not add, remove, or relocate any existing structure. Only the lighting/time-of-day and the newly added items may change; every existing element keeps its exact position and form.',
+  ].join('\n');
+}
+
 export const editImageStep: PipelineStep<EditImageInput, EditImageOutput> = {
   name: 'editImage',
   async run(input) {
     const dataUri = `data:${input.mimeType};base64,${input.image}`;
     // Per-style richness when the runner supplies it; else the global default.
     const richness = input.richness ?? config.gemini.richness;
-    console.log(`[editImage] richness=${richness} → "${richnessDirective(richness)}"`);
+    const night = input.night ?? false;
+    console.log(`[editImage] richness=${richness} night=${night} → "${richnessDirective(richness)}"`);
     const { base64, mimeType } = await editImage({
       dataUri,
-      prompt: composeEditPrompt(input.prompt, richness, input.scene),
+      prompt: composeEditPrompt(input.prompt, richness, input.scene, night),
       fallbackMime: input.mimeType,
     });
     // `editImage` already guards empty output; guard again defensively.

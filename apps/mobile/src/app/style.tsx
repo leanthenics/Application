@@ -79,6 +79,7 @@ export default function StyleScreen() {
         image: base64,
         mimeType,
         style: selectedId,
+        night: draft.night,
         ...(draft.prompt ? { prompt: draft.prompt } : {}),
       });
       // A credit was just spent — re-sync the balance (pill + Settings) from the DB.
@@ -89,6 +90,7 @@ export default function StyleScreen() {
         style: selectedId,
         styleLabel: chosen?.label ?? selectedId,
         prompt: draft.prompt,
+        night: draft.night,
         status: 'queued',
         result: null,
         error: null,

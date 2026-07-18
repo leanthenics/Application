@@ -54,9 +54,10 @@ export async function runPipeline(data: JobData, ctx: PipelineContext): Promise<
   console.log(`[pipeline] ${ctx.jobId} enhancedPrompt="${enhancedPrompt}"`);
 
   // Step 3 — edit the input image: add into the zones, preserve everything else.
+  // When `night` is set, the editor also relights the scene to night-time.
   const edited = await runStep(
     editImageStep,
-    { image: data.image, mimeType: data.mimeType, prompt: enhancedPrompt, scene, richness },
+    { image: data.image, mimeType: data.mimeType, prompt: enhancedPrompt, scene, richness, night: data.night },
     ctx,
   );
 

@@ -23,6 +23,8 @@ import { z } from 'zod';
  *   - 2026-07-10 — Model 4 grouping + price: Product gains optional priceMin/priceMax (INR,
  *                  AI-estimated approximate range). JobResult.products (flat) → productGroups
  *                  (AI-generated groups, single-pass). ProductGroup added.
+ *   - 2026-07-17 — Night mode: CreateJobRequest gains optional `night` (bool, default false).
+ *                  When true the editor relights the scene to night-time. Result shape unchanged.
  *
  * Still pending (added when required):
  *   schemas: ApiError
@@ -56,6 +58,9 @@ export const CreateJobRequest = z.strictObject({
   style: z.string().min(1, 'style is required'),
   // Optional free-text request layered on top of the style (e.g. "add a water feature").
   prompt: z.string().max(2000, 'prompt must be at most 2000 characters').optional(),
+  // Night mode: when true, the editor also relights the scene to night-time. Optional,
+  // defaults to false so existing callers (and daytime jobs) are unaffected.
+  night: z.boolean().optional().default(false),
 });
 export type CreateJobRequest = z.infer<typeof CreateJobRequest>;
 

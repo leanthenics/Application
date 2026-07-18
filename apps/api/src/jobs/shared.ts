@@ -16,6 +16,8 @@ export interface JobData {
   style: string;
   /** Optional free-text request layered on top of the style. */
   prompt?: string;
+  /** Night mode: relight the edited scene to night-time (default false). */
+  night?: boolean;
   /** Supabase user id (token subject) that owns this job — stamped at enqueue. */
   userId: string;
 }

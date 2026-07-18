@@ -8,6 +8,8 @@ import { create } from 'zustand';
 type Draft = {
   imageUri: string;
   prompt: string;
+  /** Night mode: relight the result to night-time. */
+  night: boolean;
 };
 
 type DraftState = {

@@ -8,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -19,6 +20,7 @@ import { useDraftStore } from '@/store/draft';
 export default function CreateScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
+  const [night, setNight] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
   const setDraft = useDraftStore((s) => s.setDraft);
@@ -52,7 +54,7 @@ export default function CreateScreen() {
   // Hand the capture to the style-picker screen, which submits the job.
   function onNext() {
     if (!imageUri) return;
-    setDraft({ imageUri, prompt: prompt.trim() });
+    setDraft({ imageUri, prompt: prompt.trim(), night });
     router.push('/style');
   }
 
@@ -92,6 +94,20 @@ export default function CreateScreen() {
           maxLength={2000}
           multiline
         />
+
+        <View style={styles.nightRow}>
+          <Ionicons name="moon" size={20} color="#208AEF" />
+          <View style={styles.nightText}>
+            <Text style={styles.nightTitle}>Night mode</Text>
+            <Text style={styles.nightSubtitle}>Show your garden at night</Text>
+          </View>
+          <Switch
+            value={night}
+            onValueChange={setNight}
+            trackColor={{ true: '#208AEF' }}
+            accessibilityLabel="Night mode"
+          />
+        </View>
 
         <Pressable
           style={[styles.nextBtn, !canProceed && styles.nextBtnDisabled]}
@@ -151,6 +167,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000',
   },
+  nightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 12,
+  },
+  nightText: { flex: 1 },
+  nightTitle: { fontSize: 16, fontWeight: '600', color: '#000' },
+  nightSubtitle: { fontSize: 13, color: '#8E8E93', marginTop: 1 },
   nextBtn: {
     flexDirection: 'row',
     alignItems: 'center',

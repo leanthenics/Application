@@ -31,6 +31,7 @@ export default function JobDetailScreen() {
         image: base64,
         mimeType,
         style: job.style,
+        night: job.night,
         ...(job.prompt ? { prompt: job.prompt } : {}),
       });
       addJob({
@@ -39,6 +40,7 @@ export default function JobDetailScreen() {
         style: job.style,
         styleLabel: job.styleLabel,
         prompt: job.prompt,
+        night: job.night,
         status: 'queued',
         result: null,
         error: null,

@@ -15,6 +15,8 @@ export type Job = {
   styleLabel: string;
   /** Optional free-text request (may be ''). */
   prompt: string;
+  /** Night mode: relit to night-time (used to re-run on retry). */
+  night: boolean;
   status: JobStatus;
   result: JobResult | null;
   error: string | null;
