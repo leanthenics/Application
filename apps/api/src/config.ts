@@ -30,6 +30,15 @@ export const config = {
     // this to the mobile app; it lives only in apps/api/.env.
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
   },
+  storage: {
+    // Private Supabase Storage bucket holding input + output images. The DB
+    // (public.generations) stores only the object path; clients read via short-lived
+    // signed URLs (storage RLS = own folder). See docs/private/sql/generations.sql.
+    bucket: process.env.SUPABASE_STORAGE_BUCKET ?? 'job-images',
+    // Images + their generations rows older than this are purged by the worker's
+    // cleanup schedule to cap storage cost (Supabase Storage has no native TTL).
+    retentionDays: Number(process.env.IMAGE_RETENTION_DAYS ?? 4),
+  },
   amazon: {
     tld: process.env.AMAZON_TLD ?? 'in',
     affiliateTag: process.env.AMAZON_AFFILIATE_TAG ?? '',

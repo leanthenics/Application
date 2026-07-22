@@ -1,4 +1,4 @@
-import type { JobResult, ProductGroup } from '@clickretina/contract';
+import type { OutputImageMime, ProductGroup } from '@clickretina/contract';
 import type { JobData } from '../jobs/shared.js';
 import { config } from '../config.js';
 import { getStyle } from '../styles/catalog.js';
@@ -23,9 +23,20 @@ import { buildAmazonUrl } from './amazon.js';
  *   3. editImage       (Replicate nano-banana)   — image + scene + instruction → edited image
  *   4. extractKeyterms (Gemini Flash-Lite vision)— edited image → shoppable key-terms
  *   5. Amazon URLs     (affiliate link builder)  — key-term → search URL
+ *
+ * The pipeline stays PURE — it returns the edited image BYTES (`PipelineOutput`). The
+ * worker persists those bytes to Storage and maps them to the path-based public
+ * `JobResult` contract, so rendering and persistence stay separate concerns.
  */
 
-export async function runPipeline(data: JobData, ctx: PipelineContext): Promise<JobResult> {
+export interface PipelineOutput {
+  /** Edited image, base64 (no data-uri prefix). Uploaded to Storage by the worker. */
+  outputImage: string;
+  mimeType: OutputImageMime;
+  productGroups: ProductGroup[];
+}
+
+export async function runPipeline(data: JobData, ctx: PipelineContext): Promise<PipelineOutput> {
   // Resolve the chosen garden style from the catalog (validated at POST time; be
   // tolerant if the manifest changed between enqueue and processing).
   const style = await getStyle(data.style);

@@ -25,6 +25,10 @@ import { z } from 'zod';
  *                  (AI-generated groups, single-pass). ProductGroup added.
  *   - 2026-07-17 — Night mode: CreateJobRequest gains optional `night` (bool, default false).
  *                  When true the editor relights the scene to night-time. Result shape unchanged.
+ *   - 2026-07-18 — Persistent storage: images now live in the private `job-images` Supabase
+ *                  Storage bucket (evicted after retention), so JobResult carries storage
+ *                  PATHS instead of bytes — `outputImage` (base64) → `outputImagePath` +
+ *                  `inputImagePath`. Clients mint short-lived signed URLs to read them.
  *
  * Still pending (added when required):
  *   schemas: ApiError
@@ -93,7 +97,12 @@ export const ProductGroup = z.object({
 export type ProductGroup = z.infer<typeof ProductGroup>;
 
 export const JobResult = z.object({
-  outputImage: z.string(), // base64 (no data-uri prefix)
+  // Object paths in the private `job-images` Supabase Storage bucket, e.g.
+  // `<userId>/<jobId>/output.png`. We store references, not bytes: the client mints a
+  // short-lived signed URL per view via its authed Supabase client (storage RLS =
+  // read own folder). Both are purged once the retention window elapses.
+  inputImagePath: z.string(), // original photo (the compare "before")
+  outputImagePath: z.string(), // edited image (the compare "after")
   mimeType: OutputImageMime, // edited image's real content-type (may be webp)
   productGroups: z.array(ProductGroup),
 });
