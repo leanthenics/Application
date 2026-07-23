@@ -5,7 +5,7 @@
   "description": "ClickRetina monorepo (backend + mobile + shared contract)",
   "packageManager": "pnpm@11.9.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "build:contract": "pnpm --filter @clickretina/contract build",
