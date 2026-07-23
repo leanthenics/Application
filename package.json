@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "description": "ClickRetina monorepo (backend + mobile + shared contract)",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build:contract": "pnpm --filter @clickretina/contract build",
     "dev:api": "pnpm --filter @clickretina/api dev",

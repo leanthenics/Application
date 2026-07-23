@@ -7,6 +7,7 @@ import { ApiError, createJob } from '@/api/client';
 import { CompareSlider } from '@/components/compare-slider';
 import { ProductRow } from '@/components/product-row';
 import { WATERMARK_ENABLED } from '@/components/watermark';
+import { useSignedUrl } from '@/hooks/use-signed-url';
 import { prepareForUpload } from '@/lib/image';
 import { useJobsStore } from '@/store/jobs';
 
@@ -17,6 +18,9 @@ export default function JobDetailScreen() {
   const removeJob = useJobsStore((s) => s.removeJob);
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
+  // The edited image lives in private Storage; resolve its path to a signed URL.
+  // Hook must run before the early returns below, hence the optional chain.
+  const afterUrl = useSignedUrl(job?.result?.outputImagePath);
 
   // Re-run identical (same photo + style + prompt) and replace the old failed
   // entry. Re-submitting returns a new jobId; the app-wide poller picks up the new
@@ -108,15 +112,25 @@ export default function JobDetailScreen() {
     );
   }
 
-  // Completed
-  const { mimeType, outputImage, productGroups } = job.result;
-  const uri = `data:${mimeType};base64,${outputImage}`;
+  // Completed. The edited ("after") image comes from a signed Storage URL; while
+  // it resolves, show a spinner rather than a broken/black image.
+  const { productGroups } = job.result;
   // Single gate for the watermark. TODO(premium): && !profile?.isPremium
   const showWatermark = WATERMARK_ENABLED;
 
+  if (!afterUrl) {
+    return (
+      <View style={styles.center}>
+        <Image source={{ uri: job.inputThumbUri }} style={styles.progressImage} contentFit="cover" />
+        <ActivityIndicator color="#208AEF" style={{ marginTop: 20 }} />
+        <Text style={styles.muted}>Loading your design…</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <CompareSlider beforeUri={job.inputThumbUri} afterUri={uri} watermark={showWatermark} />
+      <CompareSlider beforeUri={job.inputThumbUri} afterUri={afterUrl} watermark={showWatermark} />
       <Text style={styles.compareHint}>Drag the divider to compare before / after</Text>
       {job.styleLabel ? <Text style={styles.styleLabel}>{job.styleLabel} garden</Text> : null}
       <Text style={styles.sectionTitle}>Shop the look</Text>

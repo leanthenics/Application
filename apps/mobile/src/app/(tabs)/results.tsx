@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useSignedUrl } from '@/hooks/use-signed-url';
 import type { Job } from '@/store/jobs';
 import { useJobsStore } from '@/store/jobs';
 
@@ -56,9 +57,10 @@ export default function ResultsScreen() {
 
 function JobTile({ job, size, onPress }: { job: Job; size: number; onPress: () => void }) {
   const done = job.status === 'completed' && job.result;
-  const uri = done
-    ? `data:${job.result!.mimeType};base64,${job.result!.outputImage}`
-    : job.inputThumbUri;
+  // Completed edited image lives in private Storage → resolve its path to a signed
+  // URL; until it's ready (or if it fails) fall back to the local input thumbnail.
+  const afterUrl = useSignedUrl(done ? job.result!.outputImagePath : null);
+  const uri = done && afterUrl ? afterUrl : job.inputThumbUri;
 
   return (
     <Pressable style={[styles.tile, { width: size, height: size }]} onPress={onPress}>
