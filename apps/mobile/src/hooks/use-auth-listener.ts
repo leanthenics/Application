@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { useHistoryStore } from '@/store/history';
 import { useJobsStore } from '@/store/jobs';
 
 /**
@@ -29,6 +30,7 @@ export function useAuthListener() {
       // reactively via use-profile).
       if (event === 'SIGNED_OUT') {
         useJobsStore.getState().reset();
+        useHistoryStore.getState().reset();
       }
     });
 

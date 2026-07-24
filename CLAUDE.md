@@ -6,13 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ClickRetina is a mobile app where a user submits **an image of a room/space + a text prompt**, and the backend runs a **3-model AI pipeline** that returns an **edited image** plus **Amazon affiliate search links** for each detected product. See `docs/private/architecture.md` for the full design and locked phase-1 decisions; `docs/private/plan.md` for the phased roadmap; `docs/private/task.md` for the live task checklist and session log; `docs/private/security.md` for the pre-launch security/weak-points checklist. (These internal docs live in `docs/private/`, which is **gitignored** — local-only, not committed.)
 
-> **Project status: MVP working end-to-end (as of 2026-07-01).** Backend **B0–B2 complete & user-verified live**: full job lifecycle (`POST /jobs` → BullMQ worker → `GET /jobs/:id` polling) running the real 3-model pipeline (`enhancePrompt → editImage → extractKeyterms → Amazon URLs`) with a real edited image + real product keyterms + affiliate links. Frontend **F0–F2 complete & verified live in Expo Go**: `apps/mobile` Expo SDK 57 app (top-tab nav, capture/resize/submit, results grid + poller + detail). `packages/contract`, `apps/api`, and `apps/mobile` all exist. **Remaining:** frontend **F3 (polish)** + backend **B3 (hardening, incl. tests — no test runner wired yet)**. Always check `docs/private/task.md` for the current focus and resume point before starting work, and tick off / annotate tasks there as you complete them.
+> **Project status: MVP working end-to-end, well past the original phase-1 scope (updated 2026-07-24).** The
+> app pivoted to **gardens/outdoor spaces** with a **style picker** (photo → choose a garden style → optional
+> text → generate). Backend **B0–B2 complete & verified live**: `POST /jobs` → BullMQ worker → `GET /jobs/:id`
+> polling running the real pipeline (`analyzeScene → enhancePrompt(style-driven) → editImage(nano) →
+> extractKeyterms(grouped, INR-priced) → Amazon URLs`). Frontend is a bottom-nav Expo SDK 57 **dev build**
+> (off Expo Go). Shipped since phase 1: **Supabase auth** (email/password + forgot/reset; Google OAuth coded
+> but live-verify pending on company client IDs); a **credits system** (1 credit/generation, DB-enforced,
+> 402 gating, auto-refund); **night mode**; **persistent storage** (images in a private Supabase Storage
+> bucket + a `public.generations` history table — `JobResult` carries image **paths**, not base64); and a
+> persistent, date-grouped **History** tab + **Download-to-Photos** button (2026-07-24, pending native install
+> + dev-client rebuild). **Remaining:** backend **B3 (hardening + tests — no test runner wired yet)**, the
+> pre-launch items in `security.md`, Google OAuth live-verify, and deployment (Railway, currently parked).
+> `docs/private/task.md` is the **authoritative** live log — always check its current-focus + resume point
+> before starting work, and annotate tasks there as you complete them.
 
 ## Repository layout (pnpm workspaces)
 
 ```
 apps/api/          # Express + TypeScript API — server + separate BullMQ worker process (both live)
-apps/mobile/       # Expo SDK 57 React Native app (expo-router, Zustand) — F0–F2 done
+apps/mobile/       # Expo SDK 57 React Native app (expo-router, Zustand) — auth + credits + history, bottom nav
 packages/contract/ # Zod schemas + inferred types, single source of truth — imported by api & mobile
 ```
 

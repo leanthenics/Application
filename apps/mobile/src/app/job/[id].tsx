@@ -2,12 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError, createJob } from '@/api/client';
 import { CompareSlider } from '@/components/compare-slider';
 import { ProductRow } from '@/components/product-row';
 import { WATERMARK_ENABLED } from '@/components/watermark';
 import { useSignedUrl } from '@/hooks/use-signed-url';
+import { saveImageToGallery } from '@/lib/download';
 import { prepareForUpload } from '@/lib/image';
 import { useJobsStore } from '@/store/jobs';
 
@@ -18,6 +19,7 @@ export default function JobDetailScreen() {
   const removeJob = useJobsStore((s) => s.removeJob);
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   // The edited image lives in private Storage; resolve its path to a signed URL.
   // Hook must run before the early returns below, hence the optional chain.
   const afterUrl = useSignedUrl(job?.result?.outputImagePath);
@@ -61,6 +63,24 @@ export default function JobDetailScreen() {
           : 'Could not retry. Check your connection and try again.',
       );
       setRetrying(false);
+    }
+  }
+
+  // Save the generated ("after") image to the device photo library.
+  async function onDownload() {
+    if (!job?.result || !afterUrl) return;
+    setSaving(true);
+    const res = await saveImageToGallery(afterUrl, {
+      id: job.jobId,
+      mimeType: job.result.mimeType,
+    });
+    setSaving(false);
+    if (res.ok) {
+      Alert.alert('Saved', 'The design was saved to your photos.');
+    } else if (res.reason === 'permission') {
+      Alert.alert('Photo access needed', 'Allow photo access to save designs to your device.');
+    } else {
+      Alert.alert('Download failed', 'Could not save the image. Please try again.');
     }
   }
 
@@ -133,6 +153,20 @@ export default function JobDetailScreen() {
       <CompareSlider beforeUri={job.inputThumbUri} afterUri={afterUrl} watermark={showWatermark} />
       <Text style={styles.compareHint}>Drag the divider to compare before / after</Text>
       {job.styleLabel ? <Text style={styles.styleLabel}>{job.styleLabel} garden</Text> : null}
+      <Pressable
+        style={[styles.downloadButton, saving && styles.downloadButtonDisabled]}
+        onPress={onDownload}
+        disabled={saving}
+        accessibilityLabel="Download design to your photos">
+        {saving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="download-outline" size={18} color="#fff" />
+            <Text style={styles.downloadButtonText}>Download</Text>
+          </>
+        )}
+      </Pressable>
       <Text style={styles.sectionTitle}>Shop the look</Text>
       {productGroups.map((g) => (
         <View key={g.group} style={styles.group}>
@@ -154,6 +188,18 @@ const styles = StyleSheet.create({
   progressImage: { width: 200, height: 200, borderRadius: 16, backgroundColor: '#F0F0F3' },
   compareHint: { fontSize: 13, color: '#8E8E93', textAlign: 'center' },
   styleLabel: { fontSize: 15, fontWeight: '600', color: '#208AEF', textAlign: 'center' },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 4,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#208AEF',
+  },
+  downloadButtonDisabled: { backgroundColor: '#B7D6F7' },
+  downloadButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000', marginTop: 4 },
   group: { gap: 8, marginTop: 4 },
   groupTitle: { fontSize: 15, fontWeight: '700', color: '#3C3C43', marginTop: 4 },

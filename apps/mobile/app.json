@@ -42,7 +42,15 @@
           "imageWidth": 76
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "ClickRetina needs access to your photos so you can save your generated designs.",
+          "savePhotosPermission": "ClickRetina needs permission to save your generated designs to your photos.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

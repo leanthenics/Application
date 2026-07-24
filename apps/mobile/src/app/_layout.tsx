@@ -44,6 +44,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="style" options={{ title: 'Choose a style' }} />
           <Stack.Screen name="job/[id]" options={{ title: 'Result' }} />
+          <Stack.Screen name="history/[id]" options={{ title: 'Design' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />
           <Stack.Screen name="buy-credits" options={{ title: 'Buy credits' }} />
         </Stack.Protected>

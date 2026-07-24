@@ -82,6 +82,9 @@ export default function TabsLayout() {
           <TabTrigger name="results" href="/results" asChild>
             <TabButton label="Results" icon="grid-outline" iconActive="grid" />
           </TabTrigger>
+          <TabTrigger name="history" href="/history" asChild>
+            <TabButton label="History" icon="time-outline" iconActive="time" />
+          </TabTrigger>
         </TabList>
       </Tabs>
     </SafeAreaView>
