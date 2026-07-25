@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { signUpWithEmail } from '@/lib/auth';
 import { GoogleAuthButton } from '@/components/google-auth-button';
+import { AuthHeader } from '@/components/ui/auth-header';
 import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
 import { colors, layout, radius, spacing, type } from '@/theme';
@@ -64,12 +65,10 @@ export default function SignUpScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
         <View style={styles.column}>
-          <Text style={[styles.title, styles.titleCenter]}>Create your account</Text>
-          <Text style={[styles.subtitle, styles.subtitleCenter]}>
-            Sign up to start designing gardens.
-          </Text>
+          <AuthHeader title="Create your account" subtitle="Sign up to start designing gardens." />
 
           <TextField
+            leadingIcon="person-outline"
             placeholder="Full name"
             autoCapitalize="words"
             autoComplete="name"
@@ -77,6 +76,7 @@ export default function SignUpScreen() {
             onChangeText={setFullName}
           />
           <TextField
+            leadingIcon="mail-outline"
             placeholder="Email"
             autoCapitalize="none"
             autoComplete="email"
@@ -85,9 +85,10 @@ export default function SignUpScreen() {
             onChangeText={setEmail}
           />
           <TextField
+            leadingIcon="lock-closed-outline"
+            passwordToggle
             placeholder="Password (min 6 characters)"
             autoCapitalize="none"
-            secureTextEntry
             value={password}
             onChangeText={setPassword}
           />
@@ -131,10 +132,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.xs,
   },
-  title: { ...type.title, fontSize: 28, color: colors.text },
-  titleCenter: { textAlign: 'center' },
-  subtitle: { ...type.body, color: colors.textSecondary, marginBottom: spacing.sm },
-  subtitleCenter: { textAlign: 'center' },
+  title: { ...type.title, fontSize: 28, color: colors.text, textAlign: 'center' },
+  subtitle: { ...type.body, color: colors.textSecondary, marginBottom: spacing.sm, textAlign: 'center' },
   error: { ...type.body, color: colors.danger },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.sm },
   muted: { ...type.body, color: colors.textSecondary },

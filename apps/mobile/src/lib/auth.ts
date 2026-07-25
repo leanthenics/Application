@@ -125,6 +125,11 @@ export async function signInWithGoogle(): Promise<void> {
   configureGoogleOnce();
   try {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    // The native GoogleSignin caches the last-chosen account, so a second signIn()
+    // silently reuses it and never shows the picker. Clear that cached account first
+    // so the account chooser always appears (and the user can switch Google accounts).
+    // signOut() is local-only (no revoke) and is a no-op when nothing is cached.
+    await GoogleSignin.signOut();
     const response = await GoogleSignin.signIn();
     if (!isSuccessResponse(response)) return; // user dismissed the picker
     const idToken = response.data.idToken;

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { signInWithEmail } from '@/lib/auth';
 import { GoogleAuthButton } from '@/components/google-auth-button';
+import { AuthHeader } from '@/components/ui/auth-header';
 import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
 import { colors, layout, spacing, type } from '@/theme';
@@ -34,10 +35,10 @@ export default function SignInScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
         <View style={styles.column}>
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Log in to design your garden.</Text>
+          <AuthHeader title="Welcome back" subtitle="Log in to design your garden." />
 
           <TextField
+            leadingIcon="mail-outline"
             placeholder="Email"
             autoCapitalize="none"
             autoComplete="email"
@@ -46,9 +47,10 @@ export default function SignInScreen() {
             onChangeText={setEmail}
           />
           <TextField
+            leadingIcon="lock-closed-outline"
+            passwordToggle
             placeholder="Password"
             autoCapitalize="none"
-            secureTextEntry
             value={password}
             onChangeText={setPassword}
           />
@@ -79,8 +81,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.canvas },
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   column: { width: '100%', maxWidth: layout.maxContentWidth, gap: spacing.md },
-  title: { ...type.title, fontSize: 28, color: colors.text },
-  subtitle: { ...type.body, color: colors.textSecondary, marginBottom: spacing.sm },
   error: { ...type.body, color: colors.danger },
   forgot: { ...type.bodyStrong, color: colors.primary, textAlign: 'center', marginTop: spacing.xs },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.sm },
