@@ -5,10 +5,11 @@ import { forwardRef, type Ref } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProfileStore } from '@/store/profile';
+import { colors, radius, spacing, type } from '@/theme';
 
 /**
  * App shell: an app-wide top bar (brand + Settings gear) over a BOTTOM tab bar
- * (Home | Create | Results), both built with expo-router/ui.
+ * (Home | Create | Results | History), both built with expo-router/ui.
  *
  * SDK 56+ dropped React Navigation compat, so the old material-top-tabs pattern
  * is gone; expo-router/ui is the sanctioned way to build custom bars. Per the v57
@@ -24,7 +25,7 @@ const TabButton = forwardRef(function TabButton(
   { label, icon, iconActive, isFocused, ...props }: TabButtonProps,
   ref: Ref<View>,
 ) {
-  const color = isFocused ? '#208AEF' : '#8E8E93';
+  const color = isFocused ? colors.primary : colors.textMuted;
   return (
     <Pressable ref={ref} {...props} style={styles.trigger}>
       <Ionicons name={isFocused ? iconActive : icon} size={24} color={color} />
@@ -46,9 +47,9 @@ function CreditsPill() {
       onPress={() => router.push('/buy-credits')}
       hitSlop={8}
       accessibilityLabel={`${credits} credits available, buy more`}>
-      <Ionicons name="flash" size={14} color="#F5A623" />
+      <Ionicons name="leaf" size={14} color={colors.primary} />
       <Text style={styles.pillText}>{credits}</Text>
-      <Ionicons name="add" size={15} color="#208AEF" />
+      <Ionicons name="add" size={15} color={colors.primary} />
     </Pressable>
   );
 }
@@ -65,7 +66,7 @@ export default function TabsLayout() {
             onPress={() => router.push('/settings')}
             hitSlop={12}
             accessibilityLabel="Settings">
-            <Ionicons name="settings-outline" size={24} color="#1C1C1E" />
+            <Ionicons name="settings-outline" size={23} color={colors.textSecondary} />
           </Pressable>
         </View>
       </View>
@@ -92,35 +93,39 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+  safe: { flex: 1, backgroundColor: colors.canvas },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    height: 52,
+    paddingHorizontal: spacing.lg,
+    height: 54,
+    backgroundColor: colors.canvas,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: colors.border,
   },
-  brand: { fontSize: 20, fontWeight: '800', color: '#000' },
-  topRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  brand: { fontSize: 20, fontWeight: '800', color: colors.text, letterSpacing: 0.2 },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingLeft: 10,
-    paddingRight: 8,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F2F2F7',
+    gap: spacing.xs,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.sm,
+    height: 32,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
-  pillText: { fontSize: 14, fontWeight: '700', color: '#1C1C1E' },
+  pillText: { ...type.label, fontWeight: '700', color: colors.text },
   tabList: {
     flexDirection: 'row',
+    backgroundColor: colors.canvas,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E5E5EA',
-    paddingTop: 8,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
   },
-  trigger: { flex: 1, alignItems: 'center', gap: 3, paddingBottom: 6 },
+  trigger: { flex: 1, alignItems: 'center', gap: 3, paddingBottom: spacing.sm },
   label: { fontSize: 11, fontWeight: '600' },
 });

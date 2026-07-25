@@ -2,15 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError, createJob } from '@/api/client';
 import { CompareSlider } from '@/components/compare-slider';
 import { ProductRow } from '@/components/product-row';
+import { Button } from '@/components/ui/button';
 import { WATERMARK_ENABLED } from '@/components/watermark';
 import { useSignedUrl } from '@/hooks/use-signed-url';
 import { saveImageToGallery } from '@/lib/download';
 import { prepareForUpload } from '@/lib/image';
 import { useJobsStore } from '@/store/jobs';
+import { colors, layout, radius, spacing, type } from '@/theme';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -87,7 +89,7 @@ export default function JobDetailScreen() {
   if (!job) {
     return (
       <View style={styles.center}>
-        <Ionicons name="help-circle-outline" size={44} color="#C7C7CC" />
+        <Ionicons name="help-circle-outline" size={44} color={colors.textMuted} />
         <Text style={styles.muted}>This job is no longer available.</Text>
       </View>
     );
@@ -98,7 +100,7 @@ export default function JobDetailScreen() {
     return (
       <View style={styles.center}>
         <Image source={{ uri: job.inputThumbUri }} style={styles.progressImage} contentFit="cover" />
-        <ActivityIndicator color="#208AEF" style={{ marginTop: 20 }} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.lg }} />
         <Text style={styles.muted}>
           {job.status === 'queued' ? 'Queued…' : 'Designing your garden…'}
         </Text>
@@ -110,23 +112,16 @@ export default function JobDetailScreen() {
   if (job.status === 'failed' || !job.result) {
     return (
       <View style={styles.center}>
-        <Ionicons name="alert-circle-outline" size={44} color="#FF3B30" />
+        <Ionicons name="alert-circle-outline" size={44} color={colors.danger} />
         <Text style={styles.errorTitle}>Generation failed</Text>
         <Text style={styles.muted}>{job.error ?? 'Something went wrong.'}</Text>
-        <Pressable
-          style={[styles.retryButton, retrying && styles.retryButtonDisabled]}
+        <Button
+          label="Try again"
+          icon="refresh"
+          loading={retrying}
+          fullWidth={false}
           onPress={onRetry}
-          disabled={retrying}
-          accessibilityLabel="Try again">
-          {retrying ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="refresh" size={18} color="#fff" />
-              <Text style={styles.retryButtonText}>Try again</Text>
-            </>
-          )}
-        </Pressable>
+        />
         {retryError ? <Text style={styles.retryError}>{retryError}</Text> : null}
       </View>
     );
@@ -142,80 +137,54 @@ export default function JobDetailScreen() {
     return (
       <View style={styles.center}>
         <Image source={{ uri: job.inputThumbUri }} style={styles.progressImage} contentFit="cover" />
-        <ActivityIndicator color="#208AEF" style={{ marginTop: 20 }} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.lg }} />
         <Text style={styles.muted}>Loading your design…</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <CompareSlider beforeUri={job.inputThumbUri} afterUri={afterUrl} watermark={showWatermark} />
-      <Text style={styles.compareHint}>Drag the divider to compare before / after</Text>
-      {job.styleLabel ? <Text style={styles.styleLabel}>{job.styleLabel} garden</Text> : null}
-      <Pressable
-        style={[styles.downloadButton, saving && styles.downloadButtonDisabled]}
-        onPress={onDownload}
-        disabled={saving}
-        accessibilityLabel="Download design to your photos">
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <>
-            <Ionicons name="download-outline" size={18} color="#fff" />
-            <Text style={styles.downloadButtonText}>Download</Text>
-          </>
-        )}
-      </Pressable>
-      <Text style={styles.sectionTitle}>Shop the look</Text>
-      {productGroups.map((g) => (
-        <View key={g.group} style={styles.group}>
-          <Text style={styles.groupTitle}>{g.group}</Text>
-          {g.items.map((p, i) => (
-            <ProductRow key={`${p.keyterm}-${i}`} product={p} />
-          ))}
-        </View>
-      ))}
+    <ScrollView style={styles.flex} contentContainerStyle={styles.scroll}>
+      <View style={styles.container}>
+        <CompareSlider beforeUri={job.inputThumbUri} afterUri={afterUrl} watermark={showWatermark} />
+        <Text style={styles.compareHint}>Drag the divider to compare before / after</Text>
+        {job.styleLabel ? <Text style={styles.styleLabel}>{job.styleLabel} garden</Text> : null}
+
+        <Button label="Download" icon="download-outline" loading={saving} onPress={onDownload} />
+
+        <Text style={styles.sectionTitle}>Shop the look</Text>
+        {productGroups.map((g) => (
+          <View key={g.group} style={styles.group}>
+            <Text style={styles.groupTitle}>{g.group}</Text>
+            {g.items.map((p, i) => (
+              <ProductRow key={`${p.keyterm}-${i}`} product={p} />
+            ))}
+          </View>
+        ))}
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 12 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
-  muted: { fontSize: 15, color: '#8E8E93', textAlign: 'center' },
-  errorTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
-  progressImage: { width: 200, height: 200, borderRadius: 16, backgroundColor: '#F0F0F3' },
-  compareHint: { fontSize: 13, color: '#8E8E93', textAlign: 'center' },
-  styleLabel: { fontSize: 15, fontWeight: '600', color: '#208AEF', textAlign: 'center' },
-  downloadButton: {
-    flexDirection: 'row',
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  scroll: { alignItems: 'center' },
+  container: { width: '100%', maxWidth: layout.maxContentWidth, padding: spacing.lg, gap: spacing.md },
+  center: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 4,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#208AEF',
+    gap: spacing.md,
+    padding: spacing.xl,
+    backgroundColor: colors.canvas,
   },
-  downloadButtonDisabled: { backgroundColor: '#B7D6F7' },
-  downloadButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000', marginTop: 4 },
-  group: { gap: 8, marginTop: 4 },
-  groupTitle: { fontSize: 15, fontWeight: '700', color: '#3C3C43', marginTop: 4 },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 4,
-    minWidth: 160,
-    height: 48,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-    backgroundColor: '#208AEF',
-  },
-  retryButtonDisabled: { backgroundColor: '#B7D6F7' },
-  retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  retryError: { color: '#FF3B30', fontSize: 14, textAlign: 'center' },
+  muted: { ...type.body, color: colors.textSecondary, textAlign: 'center' },
+  errorTitle: { ...type.subheading, fontSize: 18, color: colors.text },
+  progressImage: { width: 200, height: 200, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt },
+  compareHint: { ...type.caption, color: colors.textMuted, textAlign: 'center' },
+  styleLabel: { ...type.bodyStrong, color: colors.primary, textAlign: 'center' },
+  sectionTitle: { ...type.heading, color: colors.text, marginTop: spacing.xs },
+  group: { gap: spacing.sm, marginTop: spacing.xs },
+  groupTitle: { ...type.bodyStrong, color: colors.textSecondary, marginTop: spacing.xs },
+  retryError: { ...type.body, color: colors.danger, textAlign: 'center' },
 });

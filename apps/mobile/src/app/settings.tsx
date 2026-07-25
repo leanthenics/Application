@@ -2,9 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { signOut } from '@/lib/auth';
 import { useAuthStore } from '@/store/auth';
 import { useProfileStore } from '@/store/profile';
+import { colors, radius, spacing, type } from '@/theme';
 
 /**
  * Settings screen (pushed from the top-bar gear). Shows the signed-in user's
@@ -37,13 +40,13 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.profileCard}>
+      <Card style={styles.profileCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initial}</Text>
         </View>
 
         {loading && !profile ? (
-          <ActivityIndicator style={{ marginTop: 12 }} color="#208AEF" />
+          <ActivityIndicator style={{ marginTop: spacing.md }} color={colors.primary} />
         ) : (
           <>
             <Text style={styles.name}>{fullName}</Text>
@@ -51,31 +54,36 @@ export default function SettingsScreen() {
             {error ? <Text style={styles.error}>Couldn’t load profile: {error}</Text> : null}
           </>
         )}
-      </View>
+      </Card>
 
-      <View style={styles.creditsCard}>
+      <Card style={styles.creditsCard}>
         <View style={styles.creditsRow}>
           <View style={styles.creditsLabelWrap}>
-            <Ionicons name="flash" size={20} color="#F5A623" />
+            <View style={styles.creditsIcon}>
+              <Ionicons name="leaf" size={18} color={colors.primary} />
+            </View>
             <Text style={styles.creditsLabel}>Available credits</Text>
           </View>
           <Text style={styles.creditsValue}>{profile?.credits ?? 0}</Text>
         </View>
-        <Pressable style={styles.buyBtn} onPress={() => router.push('/buy-credits')}>
-          <Ionicons name="add-circle-outline" size={18} color="#fff" />
-          <Text style={styles.buyBtnText}>Buy more credits</Text>
-        </Pressable>
-      </View>
+        <Button
+          label="Buy more credits"
+          icon="add-circle-outline"
+          onPress={() => router.push('/buy-credits')}
+        />
+      </Card>
 
       <Pressable
-        style={[styles.logout, signingOut && styles.logoutDisabled]}
+        style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed, signingOut && styles.logoutDisabled]}
         onPress={onLogout}
-        disabled={signingOut}>
+        disabled={signingOut}
+        accessibilityRole="button"
+        accessibilityLabel="Log out">
         {signingOut ? (
-          <ActivityIndicator color="#FF3B30" />
+          <ActivityIndicator color={colors.danger} />
         ) : (
           <>
-            <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+            <Ionicons name="log-out-outline" size={20} color={colors.danger} />
             <Text style={styles.logoutText}>Log out</Text>
           </>
         )}
@@ -85,52 +93,46 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F2F2F7', padding: 20, gap: 20 },
-  profileCard: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 28,
-    paddingHorizontal: 20,
-    gap: 6,
-  },
+  container: { flex: 1, backgroundColor: colors.canvas, padding: spacing.lg, gap: spacing.lg },
+  profileCard: { alignItems: 'center', paddingVertical: spacing.xl, gap: spacing.xs },
   avatar: {
     width: 72,
     height: 72,
-    borderRadius: 36,
-    backgroundColor: '#208AEF',
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
-  avatarText: { color: '#fff', fontSize: 30, fontWeight: '700' },
-  name: { fontSize: 20, fontWeight: '700', color: '#000' },
-  email: { fontSize: 15, color: '#8E8E93' },
-  error: { fontSize: 13, color: '#FF3B30', marginTop: 8, textAlign: 'center' },
-  creditsCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18, gap: 16 },
+  avatarText: { color: colors.onPrimary, fontSize: 30, fontWeight: '700' },
+  name: { ...type.heading, color: colors.text },
+  email: { ...type.body, color: colors.textSecondary },
+  error: { ...type.caption, color: colors.danger, marginTop: spacing.sm, textAlign: 'center' },
+  creditsCard: { gap: spacing.lg },
   creditsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  creditsLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  creditsLabel: { fontSize: 16, color: '#000', fontWeight: '600' },
-  creditsValue: { fontSize: 22, fontWeight: '800', color: '#1C1C1E' },
-  buyBtn: {
-    flexDirection: 'row',
+  creditsLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  creditsIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#208AEF',
   },
-  buyBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  creditsLabel: { ...type.bodyStrong, fontSize: 16, color: colors.text },
+  creditsValue: { ...type.title, fontSize: 24, color: colors.text },
   logout: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
     height: 52,
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
+  logoutPressed: { backgroundColor: colors.surfaceAlt },
   logoutDisabled: { opacity: 0.6 },
-  logoutText: { color: '#FF3B30', fontSize: 16, fontWeight: '600' },
+  logoutText: { ...type.bodyStrong, fontSize: 16, color: colors.danger },
 });

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { googleSignInEnabled, signInWithGoogle } from '@/lib/auth';
+import { colors, radius, spacing, type } from '@/theme';
 
 /**
  * "or" divider + "Continue with Google" button, shared by sign-in and sign-up.
@@ -38,14 +39,15 @@ export function GoogleAuthButton({ onError }: { onError: (message: string) => vo
       </View>
 
       <Pressable
-        style={[styles.button, loading && styles.buttonDisabled]}
+        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed, loading && styles.buttonDisabled]}
         onPress={onPress}
-        disabled={loading}>
+        disabled={loading}
+        android_ripple={{ color: colors.ripple }}>
         {loading ? (
-          <ActivityIndicator color="#000" />
+          <ActivityIndicator color={colors.text} />
         ) : (
           <>
-            <Ionicons name="logo-google" size={18} color="#000" style={styles.icon} />
+            <Ionicons name="logo-google" size={18} color={colors.text} style={styles.icon} />
             <Text style={styles.buttonText}>Continue with Google</Text>
           </>
         )}
@@ -55,21 +57,22 @@ export function GoogleAuthButton({ onError }: { onError: (message: string) => vo
 }
 
 const styles = StyleSheet.create({
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4, gap: 12 },
-  line: { flex: 1, height: 1, backgroundColor: '#E5E5EA' },
-  or: { color: '#8E8E93', fontSize: 13, fontWeight: '600' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.xs, gap: spacing.md },
+  line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  or: { ...type.label, color: colors.textMuted },
   button: {
-    height: 50,
-    borderRadius: 25,
+    height: 52,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
-    backgroundColor: '#fff',
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
-  buttonDisabled: { opacity: 0.6 },
+  buttonPressed: { backgroundColor: colors.surfaceAlt },
+  buttonDisabled: { opacity: 0.55 },
   icon: { marginRight: 2 },
-  buttonText: { color: '#000', fontSize: 16, fontWeight: '600' },
+  buttonText: { ...type.bodyStrong, fontSize: 16, color: colors.text },
 });

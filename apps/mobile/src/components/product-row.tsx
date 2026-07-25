@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import type { Product } from '@clickretina/contract';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { colors, radius, spacing, type } from '@/theme';
 
 /** Approximate INR price range, e.g. "₹1,000–3,000". Returns null when unpriced. */
 function formatPrice(product: Product): string | null {
@@ -29,16 +31,22 @@ export function ProductRow({ product }: { product: Product }) {
     }
   }
   return (
-    <Pressable style={styles.productRow} onPress={open} android_ripple={{ color: '#E5E5EA' }}>
-      <Ionicons name="cart-outline" size={20} color="#208AEF" />
+    <PressableScale
+      haptic
+      style={({ pressed }) => [styles.productRow, pressed && styles.productRowPressed]}
+      onPress={open}
+      android_ripple={{ color: colors.ripple }}>
+      <View style={styles.productIcon}>
+        <Ionicons name="cart-outline" size={18} color={colors.primary} />
+      </View>
       <View style={styles.productBody}>
         <Text style={styles.productText} numberOfLines={2}>
           {product.keyterm}
         </Text>
         {price ? <Text style={styles.productPrice}>{price}</Text> : null}
       </View>
-      <Ionicons name="open-outline" size={18} color="#8E8E93" />
-    </Pressable>
+      <Ionicons name="open-outline" size={18} color={colors.textMuted} />
+    </PressableScale>
   );
 }
 
@@ -46,15 +54,24 @@ const styles = StyleSheet.create({
   productRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
-    backgroundColor: '#fff',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  productRowPressed: { backgroundColor: colors.surfaceAlt },
+  productIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   productBody: { flex: 1, gap: 2 },
-  productText: { fontSize: 16, color: '#000' },
-  productPrice: { fontSize: 14, fontWeight: '600', color: '#34A853' },
+  productText: { ...type.body, fontSize: 16, color: colors.text },
+  productPrice: { ...type.label, color: colors.success },
 });

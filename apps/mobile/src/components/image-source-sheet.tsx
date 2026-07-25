@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, radius, spacing, type } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -16,15 +17,19 @@ export function ImageSourceSheet({ visible, onClose, onCamera, onGallery }: Prop
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 8 }]}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.sm }]}>
           <View style={styles.handle} />
           <Text style={styles.title}>Add a photo</Text>
-          <Pressable style={styles.option} onPress={onCamera} android_ripple={{ color: '#E5E5EA' }}>
-            <Ionicons name="camera-outline" size={22} color="#208AEF" />
+          <Pressable style={styles.option} onPress={onCamera} android_ripple={{ color: colors.ripple }}>
+            <View style={styles.optionIcon}>
+              <Ionicons name="camera-outline" size={20} color={colors.primary} />
+            </View>
             <Text style={styles.optionText}>Take photo</Text>
           </Pressable>
-          <Pressable style={styles.option} onPress={onGallery} android_ripple={{ color: '#E5E5EA' }}>
-            <Ionicons name="images-outline" size={22} color="#208AEF" />
+          <Pressable style={styles.option} onPress={onGallery} android_ripple={{ color: colors.ripple }}>
+            <View style={styles.optionIcon}>
+              <Ionicons name="images-outline" size={20} color={colors.primary} />
+            </View>
             <Text style={styles.optionText}>Choose from gallery</Text>
           </Pressable>
           <Pressable style={[styles.option, styles.cancel]} onPress={onClose}>
@@ -44,32 +49,40 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.overlay,
   },
   sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
   },
   handle: {
     alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#D1D1D6',
-    marginBottom: 12,
+    backgroundColor: colors.borderStrong,
+    marginBottom: spacing.md,
   },
-  title: { fontSize: 15, fontWeight: '600', color: '#8E8E93', marginBottom: 6, paddingHorizontal: 4 },
+  title: { ...type.label, color: colors.textMuted, marginBottom: spacing.xs, paddingHorizontal: spacing.xs },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 4,
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
   },
-  optionText: { fontSize: 17, color: '#000' },
-  cancel: { justifyContent: 'center', marginTop: 4 },
-  cancelText: { fontSize: 17, fontWeight: '600', color: '#FF3B30' },
+  optionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionText: { ...type.subheading, fontWeight: '500', color: colors.text },
+  cancel: { justifyContent: 'center', marginTop: spacing.xs },
+  cancelText: { ...type.subheading, color: colors.danger, textAlign: 'center', width: '100%' },
 });

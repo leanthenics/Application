@@ -1,17 +1,11 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { updatePassword } from '@/lib/auth';
 import { useAuthStore } from '@/store/auth';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { colors, layout, spacing, type } from '@/theme';
 
 /**
  * Landing route for the password-reset deep link (`<scheme>://reset-password`).
@@ -65,20 +59,22 @@ export default function ResetPasswordScreen() {
     if (timedOut) {
       return (
         <View style={styles.centered}>
-          <Text style={styles.title}>Reset link expired</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, styles.center]}>Reset link expired</Text>
+          <Text style={[styles.subtitle, styles.center]}>
             This password reset link is invalid or has expired. Request a new one.
           </Text>
-          <Pressable style={styles.button} onPress={() => router.replace('/forgot-password')}>
-            <Text style={styles.buttonText}>Request new link</Text>
-          </Pressable>
+          <Button
+            label="Request new link"
+            fullWidth={false}
+            onPress={() => router.replace('/forgot-password')}
+          />
         </View>
       );
     }
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color="#208AEF" />
-        <Text style={styles.subtitle}>Verifying your reset link…</Text>
+        <ActivityIndicator color={colors.primary} />
+        <Text style={[styles.subtitle, styles.center]}>Verifying your reset link…</Text>
       </View>
     );
   }
@@ -88,80 +84,48 @@ export default function ResetPasswordScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        <Text style={styles.title}>Set a new password</Text>
-        <Text style={styles.subtitle}>Choose a new password for your account.</Text>
+        <View style={styles.column}>
+          <Text style={[styles.title, styles.center]}>Set a new password</Text>
+          <Text style={[styles.subtitle, styles.center]}>Choose a new password for your account.</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="New password (min 6 characters)"
-          placeholderTextColor="#8E8E93"
-          autoCapitalize="none"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm new password"
-          placeholderTextColor="#8E8E93"
-          autoCapitalize="none"
-          secureTextEntry
-          value={confirm}
-          onChangeText={setConfirm}
-        />
+          <TextField
+            placeholder="New password (min 6 characters)"
+            autoCapitalize="none"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TextField
+            placeholder="Confirm new password"
+            autoCapitalize="none"
+            secureTextEntry
+            value={confirm}
+            onChangeText={setConfirm}
+          />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable
-          style={[styles.button, styles.buttonFull, !canSubmit && styles.buttonDisabled]}
-          onPress={onSubmit}
-          disabled={!canSubmit}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Update password</Text>
-          )}
-        </Pressable>
+          <Button label="Update password" loading={loading} disabled={!canSubmit} onPress={onSubmit} />
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 14 },
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  column: { width: '100%', maxWidth: layout.maxContentWidth, gap: spacing.md },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    gap: 14,
-    backgroundColor: '#fff',
+    padding: spacing.xl,
+    gap: spacing.md,
+    backgroundColor: colors.canvas,
   },
-  title: { fontSize: 28, fontWeight: '800', color: '#000', textAlign: 'center' },
-  subtitle: { fontSize: 15, color: '#8E8E93', marginBottom: 8, textAlign: 'center' },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    color: '#000',
-    backgroundColor: '#fff',
-  },
-  error: { color: '#FF3B30', fontSize: 14 },
-  button: {
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-    paddingHorizontal: 24,
-    minWidth: 200,
-  },
-  buttonFull: { alignSelf: 'stretch' },
-  buttonDisabled: { backgroundColor: '#B7D6F7' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  title: { ...type.title, fontSize: 28, color: colors.text },
+  subtitle: { ...type.body, color: colors.textSecondary, marginBottom: spacing.sm },
+  center: { textAlign: 'center' },
+  error: { ...type.body, color: colors.danger },
 });

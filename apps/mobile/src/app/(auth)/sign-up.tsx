@@ -1,18 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { signUpWithEmail } from '@/lib/auth';
 import { GoogleAuthButton } from '@/components/google-auth-button';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { colors, layout, radius, spacing, type } from '@/theme';
 
 export default function SignUpScreen() {
   const [fullName, setFullName] = useState('');
@@ -48,14 +42,18 @@ export default function SignUpScreen() {
   if (sent) {
     return (
       <View style={styles.centered}>
-        <Ionicons name="mail-unread-outline" size={56} color="#208AEF" />
+        <View style={styles.mailBadge}>
+          <Ionicons name="mail-unread-outline" size={44} color={colors.primary} />
+        </View>
         <Text style={styles.title}>Check your email</Text>
         <Text style={styles.subtitle}>
           We sent a confirmation link to {email.trim()}. Tap it to activate your account, then log in.
         </Text>
-        <Pressable style={styles.button} onPress={() => router.replace('/sign-in')}>
-          <Text style={styles.buttonText}>Back to log in</Text>
-        </Pressable>
+        <Button
+          label="Back to log in"
+          fullWidth={false}
+          onPress={() => router.replace('/sign-in')}
+        />
       </View>
     );
   }
@@ -65,54 +63,47 @@ export default function SignUpScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Sign up to start designing gardens.</Text>
+        <View style={styles.column}>
+          <Text style={[styles.title, styles.titleCenter]}>Create your account</Text>
+          <Text style={[styles.subtitle, styles.subtitleCenter]}>
+            Sign up to start designing gardens.
+          </Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Full name"
-          placeholderTextColor="#8E8E93"
-          autoCapitalize="words"
-          autoComplete="name"
-          value={fullName}
-          onChangeText={setFullName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#8E8E93"
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password (min 6 characters)"
-          placeholderTextColor="#8E8E93"
-          autoCapitalize="none"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+          <TextField
+            placeholder="Full name"
+            autoCapitalize="words"
+            autoComplete="name"
+            value={fullName}
+            onChangeText={setFullName}
+          />
+          <TextField
+            placeholder="Email"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <TextField
+            placeholder="Password (min 6 characters)"
+            autoCapitalize="none"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable
-          style={[styles.button, !canSubmit && styles.buttonDisabled]}
-          onPress={onSubmit}
-          disabled={!canSubmit}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign up</Text>}
-        </Pressable>
+          <Button label="Sign up" loading={loading} disabled={!canSubmit} onPress={onSubmit} />
 
-        <GoogleAuthButton onError={setError} />
+          <GoogleAuthButton onError={setError} />
 
-        <View style={styles.footer}>
-          <Text style={styles.muted}>Already have an account? </Text>
-          <Link href="/sign-in" style={styles.link}>
-            Log in
-          </Link>
+          <View style={styles.footer}>
+            <Text style={styles.muted}>Already have an account? </Text>
+            <Link href="/sign-in" style={styles.link}>
+              Log in
+            </Link>
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -120,35 +111,32 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 14 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 14, backgroundColor: '#fff' },
-  title: { fontSize: 28, fontWeight: '800', color: '#000', textAlign: 'center' },
-  subtitle: { fontSize: 15, color: '#8E8E93', marginBottom: 8, textAlign: 'center' },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    color: '#000',
-    backgroundColor: '#fff',
-  },
-  error: { color: '#FF3B30', fontSize: 14 },
-  button: {
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#208AEF',
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  column: { width: '100%', maxWidth: layout.maxContentWidth, gap: spacing.md },
+  centered: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
-    paddingHorizontal: 24,
-    minWidth: 200,
+    padding: spacing.xl,
+    gap: spacing.md,
+    backgroundColor: colors.canvas,
   },
-  buttonDisabled: { backgroundColor: '#B7D6F7' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
-  muted: { color: '#8E8E93', fontSize: 15 },
-  link: { color: '#208AEF', fontSize: 15, fontWeight: '600' },
+  mailBadge: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  title: { ...type.title, fontSize: 28, color: colors.text },
+  titleCenter: { textAlign: 'center' },
+  subtitle: { ...type.body, color: colors.textSecondary, marginBottom: spacing.sm },
+  subtitleCenter: { textAlign: 'center' },
+  error: { ...type.body, color: colors.danger },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.sm },
+  muted: { ...type.body, color: colors.textSecondary },
+  link: { ...type.bodyStrong, color: colors.primary },
 });

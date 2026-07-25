@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -13,14 +13,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, createJob, getStyles, type Style } from '@/api/client';
+import { Button } from '@/components/ui/button';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { tapSelection } from '@/lib/haptics';
 import { refreshProfile } from '@/hooks/use-profile';
 import { prepareForUpload } from '@/lib/image';
 import { useDraftStore } from '@/store/draft';
 import { useJobsStore } from '@/store/jobs';
 import { useProfileStore } from '@/store/profile';
+import { colors, layout, radius, spacing, type } from '@/theme';
 
-const GAP = 12;
-const PAD = 16;
+const GAP = spacing.md;
+const PAD = spacing.lg;
 
 /**
  * Style-picker (step 2). Reads the pending capture from the draft store, lets the
@@ -44,7 +48,8 @@ export default function StyleScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { width } = useWindowDimensions();
-  const cardW = (width - PAD * 2 - GAP) / 2;
+  const gridWidth = Math.min(width, layout.maxContentWidth);
+  const cardW = (gridWidth - PAD * 2 - GAP) / 2;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -119,11 +124,9 @@ export default function StyleScreen() {
   if (!draft) {
     return (
       <View style={styles.center}>
-        <Ionicons name="image-outline" size={44} color="#C7C7CC" />
+        <Ionicons name="image-outline" size={44} color={colors.textMuted} />
         <Text style={styles.muted}>Pick a photo first.</Text>
-        <Pressable style={styles.primaryBtn} onPress={() => router.replace('/create')}>
-          <Text style={styles.primaryBtnText}>Go to Create</Text>
-        </Pressable>
+        <Button label="Go to Create" fullWidth={false} onPress={() => router.replace('/create')} />
       </View>
     );
   }
@@ -131,7 +134,7 @@ export default function StyleScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#208AEF" />
+        <ActivityIndicator color={colors.primary} />
         <Text style={styles.muted}>Loading styles…</Text>
       </View>
     );
@@ -140,12 +143,9 @@ export default function StyleScreen() {
   if (loadError) {
     return (
       <View style={styles.center}>
-        <Ionicons name="cloud-offline-outline" size={44} color="#C7C7CC" />
+        <Ionicons name="cloud-offline-outline" size={44} color={colors.textMuted} />
         <Text style={styles.muted}>{loadError}</Text>
-        <Pressable style={styles.primaryBtn} onPress={load}>
-          <Ionicons name="refresh" size={16} color="#fff" />
-          <Text style={styles.primaryBtnText}>Retry</Text>
-        </Pressable>
+        <Button label="Retry" icon="refresh" fullWidth={false} onPress={load} />
       </View>
     );
   }
@@ -158,33 +158,36 @@ export default function StyleScreen() {
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.grid}
-        ListHeaderComponent={<Text style={styles.heading}>Pick a garden style</Text>}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.headerWrap}>
+            <Text style={styles.heading}>Pick a garden style</Text>
+            <Text style={styles.subheading}>Tap a style, then generate your design.</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <StyleCard
             style={item}
             width={cardW}
             selected={item.id === selectedId}
-            onPress={() => setSelectedId(item.id)}
+            onPress={() => {
+              tapSelection();
+              setSelectedId(item.id);
+            }}
           />
         )}
       />
 
       <View style={styles.footer}>
         {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
-        <Pressable
-          style={[styles.generateBtn, (!selectedId || submitting) && styles.generateBtnDisabled]}
+        <Button
+          label="Generate"
+          icon="sparkles"
+          size="lg"
+          loading={submitting}
+          disabled={!selectedId}
           onPress={onGenerate}
-          disabled={!selectedId || submitting}
-          accessibilityLabel="Generate">
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="sparkles" size={18} color="#fff" />
-              <Text style={styles.generateText}>Generate</Text>
-            </>
-          )}
-        </Pressable>
+        />
       </View>
     </SafeAreaView>
   );
@@ -201,8 +204,19 @@ function StyleCard({
   selected: boolean;
   onPress: () => void;
 }) {
+  // Pop the check badge in/out when selection changes.
+  const badge = useRef(new Animated.Value(selected ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.spring(badge, {
+      toValue: selected ? 1 : 0,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 8,
+    }).start();
+  }, [selected, badge]);
+
   return (
-    <Pressable
+    <PressableScale
       style={[styles.card, { width }, selected && styles.cardSelected]}
       onPress={onPress}
       accessibilityLabel={`Select ${style.label}`}>
@@ -210,7 +224,7 @@ function StyleCard({
         <Image source={{ uri: style.imageUrl }} style={styles.cardImage} contentFit="cover" />
       ) : (
         <View style={[styles.cardImage, styles.cardPlaceholder]}>
-          <Ionicons name="leaf-outline" size={34} color="#7BB37B" />
+          <Ionicons name="leaf-outline" size={34} color={colors.primary} />
         </View>
       )}
       <View style={styles.cardBody}>
@@ -223,69 +237,57 @@ function StyleCard({
           </Text>
         ) : null}
       </View>
-      {selected ? (
-        <View style={styles.checkBadge}>
-          <Ionicons name="checkmark-circle" size={24} color="#208AEF" />
-        </View>
-      ) : null}
-    </Pressable>
+      <Animated.View
+        style={[styles.checkBadge, { opacity: badge, transform: [{ scale: badge }] }]}
+        pointerEvents="none">
+        <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+      </Animated.View>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  grid: { padding: PAD, gap: GAP },
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  grid: { padding: PAD, gap: GAP, alignSelf: 'center', width: '100%', maxWidth: layout.maxContentWidth },
   row: { gap: GAP },
-  heading: { fontSize: 22, fontWeight: '700', color: '#000', marginBottom: 12 },
+  headerWrap: { marginBottom: spacing.md, gap: spacing.xs },
+  heading: { ...type.title, fontSize: 24, color: colors.text },
+  subheading: { ...type.body, color: colors.textSecondary },
   card: {
-    borderRadius: 14,
+    borderRadius: radius.md,
     overflow: 'hidden',
-    backgroundColor: '#F0F0F3',
+    backgroundColor: colors.surface,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: colors.border,
   },
-  cardSelected: { borderColor: '#208AEF' },
+  cardSelected: { borderColor: colors.primary },
   cardImage: { width: '100%', aspectRatio: 1 },
-  cardPlaceholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#EAF3EA' },
-  cardBody: { padding: 10, gap: 2 },
-  cardLabel: { fontSize: 15, fontWeight: '600', color: '#000' },
-  cardBlurb: { fontSize: 12, color: '#8E8E93', lineHeight: 16 },
+  cardPlaceholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
+  cardBody: { padding: spacing.md, gap: 2 },
+  cardLabel: { ...type.bodyStrong, color: colors.text },
+  cardBlurb: { ...type.caption, color: colors.textSecondary },
   checkBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 12,
+    top: spacing.sm,
+    right: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: radius.pill,
   },
   footer: {
-    padding: 16,
-    gap: 8,
+    padding: spacing.lg,
+    gap: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E5E5EA',
-    backgroundColor: '#fff',
+    borderTopColor: colors.border,
+    backgroundColor: colors.canvas,
   },
-  generateBtn: {
-    flexDirection: 'row',
+  center: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#208AEF',
+    gap: spacing.md,
+    padding: spacing.xl,
+    backgroundColor: colors.canvas,
   },
-  generateBtnDisabled: { backgroundColor: '#B7D6F7' },
-  generateText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24, backgroundColor: '#fff' },
-  muted: { fontSize: 15, color: '#8E8E93', textAlign: 'center' },
-  error: { color: '#FF3B30', fontSize: 14, textAlign: 'center' },
-  primaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 48,
-    paddingHorizontal: 22,
-    borderRadius: 24,
-    backgroundColor: '#208AEF',
-  },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  muted: { ...type.body, color: colors.textSecondary, textAlign: 'center' },
+  error: { ...type.body, color: colors.danger, textAlign: 'center' },
 });

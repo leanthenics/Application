@@ -9,6 +9,7 @@ import { useAuthListener } from '@/hooks/use-auth-listener';
 import { useAuthDeepLink } from '@/hooks/use-auth-deep-link';
 import { useProfile } from '@/hooks/use-profile';
 import { useAuthStore } from '@/store/auth';
+import { colors, type } from '@/theme';
 
 /**
  * Root navigator. Auth-gated via Stack.Protected: with a session, the app group
@@ -38,8 +39,15 @@ export default function RootLayout() {
   const isAuthed = !!session;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="auto" />
-      <Stack>
+      <StatusBar style="dark" />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.canvas },
+          headerTintColor: colors.primary,
+          headerTitleStyle: { color: colors.text, fontWeight: type.heading.fontWeight },
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: colors.canvas },
+        }}>
         <Stack.Protected guard={isAuthed}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="style" options={{ title: 'Choose a style' }} />

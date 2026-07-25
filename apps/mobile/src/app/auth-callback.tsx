@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
+import { colors, spacing, type } from '@/theme';
 
 /**
  * Landing route for the email-confirmation deep link (`<scheme>://auth-callback`).
@@ -30,33 +32,28 @@ export default function AuthCallbackScreen() {
       <View style={styles.center}>
         <Text style={styles.title}>Couldn&apos;t confirm automatically</Text>
         <Text style={styles.text}>Your email may already be confirmed — try logging in.</Text>
-        <Pressable style={styles.button} onPress={() => router.replace('/sign-in')}>
-          <Text style={styles.buttonText}>Go to log in</Text>
-        </Pressable>
+        <Button label="Go to log in" fullWidth={false} onPress={() => router.replace('/sign-in')} />
       </View>
     );
   }
 
   return (
     <View style={styles.center}>
-      <ActivityIndicator color="#208AEF" />
+      <ActivityIndicator color={colors.primary} />
       <Text style={styles.text}>Confirming your email…</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24, backgroundColor: '#fff' },
-  title: { fontSize: 18, fontWeight: '700', color: '#000', textAlign: 'center' },
-  text: { fontSize: 15, color: '#8E8E93', textAlign: 'center' },
-  button: {
-    height: 48,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-    backgroundColor: '#208AEF',
+  center: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    gap: spacing.md,
+    padding: spacing.xl,
+    backgroundColor: colors.canvas,
   },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  title: { ...type.subheading, fontSize: 18, color: colors.text, textAlign: 'center' },
+  text: { ...type.body, color: colors.textSecondary, textAlign: 'center' },
 });

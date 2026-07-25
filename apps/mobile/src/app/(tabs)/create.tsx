@@ -8,14 +8,17 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { ImageSourceSheet } from '@/components/image-source-sheet';
+import { Button } from '@/components/ui/button';
+import { NightToggle } from '@/components/ui/night-toggle';
+import { TextField } from '@/components/ui/text-field';
 import { pickFromCamera, pickFromLibrary } from '@/lib/image';
 import { useDraftStore } from '@/store/draft';
+import { colors, radius, spacing, type } from '@/theme';
 
 export default function CreateScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -24,6 +27,11 @@ export default function CreateScreen() {
   const [error, setError] = useState<string | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
   const setDraft = useDraftStore((s) => s.setDraft);
+
+  // Explicit numeric height for the photo card: the image fills it at 100% height,
+  // so the card needs a concrete height (4:3 off the screen width), not aspectRatio.
+  const { width: winW } = useWindowDimensions();
+  const cardHeight = Math.round(((winW - spacing.lg * 2) * 3) / 4);
 
   // Only the photo is required now — the style (next screen) drives the design;
   // the text is optional extra detail.
@@ -63,32 +71,37 @@ export default function CreateScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.heading}>Design your garden</Text>
+        <View style={styles.header}>
+          <Text style={styles.heading}>Design your garden</Text>
+          <Text style={styles.subheading}>Add a photo of your space to get started.</Text>
+        </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, { height: cardHeight }, !imageUri && styles.cardEmpty]}>
           {imageUri ? (
             <>
-              <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              {/* In-flow (non-absolute) so Android paints it inside the rounded,
+                  overflow-hidden card. An absoluteFill child disappears there. */}
+              <Image source={{ uri: imageUri }} style={styles.cardImage} contentFit="cover" />
               <Pressable
                 style={styles.editBtn}
                 onPress={() => setSheetVisible(true)}
                 hitSlop={10}
                 accessibilityLabel="Change photo">
-                <Ionicons name="pencil" size={18} color="#fff" />
+                <Ionicons name="pencil" size={17} color="#fff" />
               </Pressable>
             </>
           ) : (
             <Pressable style={styles.picker} onPress={() => setSheetVisible(true)}>
-              <Ionicons name="image-outline" size={52} color="#208AEF" />
+              <View style={styles.pickerIcon}>
+                <Ionicons name="image-outline" size={34} color={colors.primary} />
+              </View>
               <Text style={styles.pickerText}>Add a photo of your outdoor space</Text>
             </Pressable>
           )}
         </View>
 
-        <TextInput
-          style={styles.input}
+        <TextField
           placeholder="Add optional details… (e.g. add a water feature)"
-          placeholderTextColor="#8E8E93"
           value={prompt}
           onChangeText={setPrompt}
           maxLength={2000}
@@ -96,27 +109,24 @@ export default function CreateScreen() {
         />
 
         <View style={styles.nightRow}>
-          <Ionicons name="moon" size={20} color="#208AEF" />
+          <View style={styles.nightIcon}>
+            <Ionicons name="moon" size={18} color={colors.primary} />
+          </View>
           <View style={styles.nightText}>
             <Text style={styles.nightTitle}>Night mode</Text>
             <Text style={styles.nightSubtitle}>Show your garden at night</Text>
           </View>
-          <Switch
-            value={night}
-            onValueChange={setNight}
-            trackColor={{ true: '#208AEF' }}
-            accessibilityLabel="Night mode"
-          />
+          <NightToggle value={night} onValueChange={setNight} />
         </View>
 
-        <Pressable
-          style={[styles.nextBtn, !canProceed && styles.nextBtnDisabled]}
+        <Button
+          label="Choose a style"
+          icon="arrow-forward"
+          iconPosition="right"
+          size="lg"
           onPress={onNext}
           disabled={!canProceed}
-          accessibilityLabel="Choose a style">
-          <Text style={styles.nextText}>Choose a style</Text>
-          <Ionicons name="arrow-forward" size={20} color="#fff" />
-        </Pressable>
+        />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
@@ -132,64 +142,67 @@ export default function CreateScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { padding: 16, gap: 16 },
-  heading: { fontSize: 22, fontWeight: '700', color: '#000', marginTop: 4 },
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  container: { padding: spacing.lg, gap: spacing.lg },
+  header: { gap: spacing.xs, marginTop: spacing.xs },
+  heading: { ...type.title, fontSize: 24, color: colors.text },
+  subheading: { ...type.body, color: colors.textSecondary },
   card: {
     width: '100%',
-    aspectRatio: 4 / 3,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#F0F0F3',
+    borderRadius: radius.lg,
+    // NOTE: no `overflow: 'hidden'` here — on Android that clip stops the image
+    // layer from painting (you get the card background instead). The image rounds
+    // its own corners via `cardImage.borderRadius`.
+    backgroundColor: colors.surfaceAlt,
   },
-  picker: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  pickerText: { fontSize: 15, color: '#8E8E93', fontWeight: '500' },
-  editBtn: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+  cardEmpty: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  cardImage: { width: '100%', height: '100%', borderRadius: radius.lg },
+  picker: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
+  pickerIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  input: {
-    minHeight: 48,
-    maxHeight: 140,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 12,
-    fontSize: 16,
-    color: '#000',
+  pickerText: { ...type.bodyStrong, color: colors.textSecondary },
+  editBtn: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: colors.overlay,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   nightRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
   },
-  nightText: { flex: 1 },
-  nightTitle: { fontSize: 16, fontWeight: '600', color: '#000' },
-  nightSubtitle: { fontSize: 13, color: '#8E8E93', marginTop: 1 },
-  nextBtn: {
-    flexDirection: 'row',
+  nightIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#208AEF',
   },
-  nextBtnDisabled: { backgroundColor: '#B7D6F7' },
-  nextText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  error: { color: '#FF3B30', fontSize: 14 },
+  nightText: { flex: 1 },
+  nightTitle: { ...type.bodyStrong, fontSize: 16, color: colors.text },
+  nightSubtitle: { ...type.caption, color: colors.textSecondary, marginTop: 1 },
+  error: { ...type.body, color: colors.danger },
 });

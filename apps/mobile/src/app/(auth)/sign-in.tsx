@@ -1,17 +1,11 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { signInWithEmail } from '@/lib/auth';
 import { GoogleAuthButton } from '@/components/google-auth-button';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { colors, layout, spacing, type } from '@/theme';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
@@ -39,49 +33,42 @@ export default function SignInScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Log in to design your garden.</Text>
+        <View style={styles.column}>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Log in to design your garden.</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#8E8E93"
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#8E8E93"
-          autoCapitalize="none"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+          <TextField
+            placeholder="Email"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <TextField
+            placeholder="Password"
+            autoCapitalize="none"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable
-          style={[styles.button, !canSubmit && styles.buttonDisabled]}
-          onPress={onSubmit}
-          disabled={!canSubmit}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Log in</Text>}
-        </Pressable>
+          <Button label="Log in" loading={loading} disabled={!canSubmit} onPress={onSubmit} />
 
-        <Link href="/forgot-password" style={styles.forgot}>
-          Forgot password?
-        </Link>
-
-        <GoogleAuthButton onError={setError} />
-
-        <View style={styles.footer}>
-          <Text style={styles.muted}>New here? </Text>
-          <Link href="/sign-up" style={styles.link}>
-            Create an account
+          <Link href="/forgot-password" style={styles.forgot}>
+            Forgot password?
           </Link>
+
+          <GoogleAuthButton onError={setError} />
+
+          <View style={styles.footer}>
+            <Text style={styles.muted}>New here? </Text>
+            <Link href="/sign-up" style={styles.link}>
+              Create an account
+            </Link>
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -89,33 +76,14 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 14 },
-  title: { fontSize: 28, fontWeight: '800', color: '#000' },
-  subtitle: { fontSize: 15, color: '#8E8E93', marginBottom: 8 },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    color: '#000',
-    backgroundColor: '#fff',
-  },
-  error: { color: '#FF3B30', fontSize: 14 },
-  button: {
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  buttonDisabled: { backgroundColor: '#B7D6F7' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  forgot: { color: '#208AEF', fontSize: 15, fontWeight: '600', textAlign: 'center', marginTop: 4 },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
-  muted: { color: '#8E8E93', fontSize: 15 },
-  link: { color: '#208AEF', fontSize: 15, fontWeight: '600' },
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  column: { width: '100%', maxWidth: layout.maxContentWidth, gap: spacing.md },
+  title: { ...type.title, fontSize: 28, color: colors.text },
+  subtitle: { ...type.body, color: colors.textSecondary, marginBottom: spacing.sm },
+  error: { ...type.body, color: colors.danger },
+  forgot: { ...type.bodyStrong, color: colors.primary, textAlign: 'center', marginTop: spacing.xs },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.sm },
+  muted: { ...type.body, color: colors.textSecondary },
+  link: { ...type.bodyStrong, color: colors.primary },
 });

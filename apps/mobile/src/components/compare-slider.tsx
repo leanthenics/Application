@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import { Watermark } from './watermark';
+import { colors, radius } from '@/theme';
 
 /**
  * Before/after wipe comparison. The result (after) fills the frame; the original
@@ -102,7 +103,7 @@ export function CompareSlider({
       {width > 0 ? (
         <View style={[styles.divider, { left: sliderX }]} pointerEvents="none">
           <View style={styles.handle}>
-            <Ionicons name="swap-horizontal" size={18} color="#208AEF" />
+            <Ionicons name="swap-horizontal" size={18} color={colors.primary} />
           </View>
         </View>
       ) : null}
@@ -121,9 +122,9 @@ export function CompareSlider({
 const styles = StyleSheet.create({
   output: {
     width: '100%',
-    borderRadius: 16,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: colors.text,
   },
   beforeClip: { position: 'absolute', top: 0, bottom: 0, left: 0, overflow: 'hidden' },
   divider: {

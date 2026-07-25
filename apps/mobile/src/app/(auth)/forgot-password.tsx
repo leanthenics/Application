@@ -1,17 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { sendPasswordReset } from '@/lib/auth';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { colors, layout, radius, spacing, type } from '@/theme';
 
 /**
  * Signed-out "forgot password" screen. Sends a reset email; the emailed link comes
@@ -43,15 +37,15 @@ export default function ForgotPasswordScreen() {
   if (sent) {
     return (
       <View style={styles.centered}>
-        <Ionicons name="mail-unread-outline" size={56} color="#208AEF" />
-        <Text style={styles.title}>Check your email</Text>
-        <Text style={styles.subtitle}>
+        <View style={styles.mailBadge}>
+          <Ionicons name="mail-unread-outline" size={44} color={colors.primary} />
+        </View>
+        <Text style={[styles.title, styles.center]}>Check your email</Text>
+        <Text style={[styles.subtitle, styles.center]}>
           If an account exists for {email.trim()}, we sent a link to reset your password. Open it on
           this device to continue.
         </Text>
-        <Pressable style={styles.button} onPress={() => router.replace('/sign-in')}>
-          <Text style={styles.buttonText}>Back to log in</Text>
-        </Pressable>
+        <Button label="Back to log in" fullWidth={false} onPress={() => router.replace('/sign-in')} />
       </View>
     );
   }
@@ -61,80 +55,59 @@ export default function ForgotPasswordScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        <Text style={styles.title}>Reset your password</Text>
-        <Text style={styles.subtitle}>
-          Enter your email and we&apos;ll send you a link to set a new password.
-        </Text>
+        <View style={styles.column}>
+          <Text style={[styles.title, styles.center]}>Reset your password</Text>
+          <Text style={[styles.subtitle, styles.center]}>
+            Enter your email and we&apos;ll send you a link to set a new password.
+          </Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#8E8E93"
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
+          <TextField
+            placeholder="Email"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable
-          style={[styles.button, styles.buttonFull, !canSubmit && styles.buttonDisabled]}
-          onPress={onSubmit}
-          disabled={!canSubmit}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Send reset link</Text>
-          )}
-        </Pressable>
+          <Button label="Send reset link" loading={loading} disabled={!canSubmit} onPress={onSubmit} />
 
-        <Pressable style={styles.footer} onPress={() => router.replace('/sign-in')}>
-          <Text style={styles.link}>Back to log in</Text>
-        </Pressable>
+          <Pressable style={styles.footer} onPress={() => router.replace('/sign-in')}>
+            <Text style={styles.link}>Back to log in</Text>
+          </Pressable>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 14 },
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  column: { width: '100%', maxWidth: layout.maxContentWidth, gap: spacing.md },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    gap: 14,
-    backgroundColor: '#fff',
+    padding: spacing.xl,
+    gap: spacing.md,
+    backgroundColor: colors.canvas,
   },
-  title: { fontSize: 28, fontWeight: '800', color: '#000', textAlign: 'center' },
-  subtitle: { fontSize: 15, color: '#8E8E93', marginBottom: 8, textAlign: 'center' },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    color: '#000',
-    backgroundColor: '#fff',
-  },
-  error: { color: '#FF3B30', fontSize: 14 },
-  button: {
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#208AEF',
+  mailBadge: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
-    paddingHorizontal: 24,
-    minWidth: 200,
+    marginBottom: spacing.xs,
   },
-  buttonFull: { alignSelf: 'stretch' },
-  buttonDisabled: { backgroundColor: '#B7D6F7' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  footer: { alignItems: 'center', marginTop: 8 },
-  link: { color: '#208AEF', fontSize: 15, fontWeight: '600' },
+  title: { ...type.title, fontSize: 28, color: colors.text },
+  subtitle: { ...type.body, color: colors.textSecondary, marginBottom: spacing.sm },
+  center: { textAlign: 'center' },
+  error: { ...type.body, color: colors.danger },
+  footer: { alignItems: 'center', marginTop: spacing.sm },
+  link: { ...type.bodyStrong, color: colors.primary },
 });

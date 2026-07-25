@@ -4,16 +4,18 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   RefreshControl,
   SectionList,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Button } from '@/components/ui/button';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { useSignedUrl } from '@/hooks/use-signed-url';
 import { fetchHistory, HISTORY_RETENTION_DAYS, type Generation } from '@/lib/history';
 import { useHistoryStore } from '@/store/history';
+import { colors, layout, radius, spacing, type } from '@/theme';
 
 type Section = { title: string; data: Generation[] };
 
@@ -88,7 +90,7 @@ export default function HistoryScreen() {
 
   const disclaimer = (
     <View style={styles.disclaimer}>
-      <Ionicons name="information-circle-outline" size={16} color="#8E8E93" />
+      <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
       <Text style={styles.disclaimerText}>
         Showing your designs from the last {HISTORY_RETENTION_DAYS} days. Older designs are
         deleted automatically.
@@ -99,7 +101,7 @@ export default function HistoryScreen() {
   if (loading && sections.length === 0) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#208AEF" />
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
@@ -107,11 +109,9 @@ export default function HistoryScreen() {
   if (error && sections.length === 0) {
     return (
       <View style={styles.center}>
-        <Ionicons name="cloud-offline-outline" size={44} color="#C7C7CC" />
+        <Ionicons name="cloud-offline-outline" size={44} color={colors.textMuted} />
         <Text style={styles.muted}>{error}</Text>
-        <Pressable style={styles.retryButton} onPress={() => load('initial')}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </Pressable>
+        <Button label="Retry" icon="refresh" fullWidth={false} onPress={() => load('initial')} />
       </View>
     );
   }
@@ -121,7 +121,9 @@ export default function HistoryScreen() {
       <View style={styles.centerPad}>
         {disclaimer}
         <View style={styles.center}>
-          <Ionicons name="time-outline" size={48} color="#C7C7CC" />
+          <View style={styles.emptyIcon}>
+            <Ionicons name="time-outline" size={40} color={colors.primary} />
+          </View>
           <Text style={styles.emptyText}>No saved designs yet.</Text>
           <Text style={styles.emptySub}>Your completed designs will appear here.</Text>
         </View>
@@ -141,9 +143,15 @@ export default function HistoryScreen() {
         <HistoryRow gen={item} onPress={() => router.push(`/history/${item.id}`)} />
       )}
       contentContainerStyle={styles.list}
+      showsVerticalScrollIndicator={false}
       stickySectionHeadersEnabled={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => load('refresh')} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => load('refresh')}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+        />
       }
     />
   );
@@ -157,13 +165,17 @@ function HistoryRow({ gen, onPress }: { gen: Generation; onPress: () => void }) 
   });
 
   return (
-    <Pressable style={styles.row} onPress={onPress} android_ripple={{ color: '#E5E5EA' }}>
+    <PressableScale
+      haptic
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      onPress={onPress}
+      android_ripple={{ color: colors.ripple }}>
       <View style={styles.thumbWrap}>
         {thumbUrl ? (
           <Image source={{ uri: thumbUrl }} style={styles.thumb} contentFit="cover" />
         ) : (
           <View style={[styles.thumb, styles.thumbPlaceholder]}>
-            <Ionicons name="image-outline" size={22} color="#C7C7CC" />
+            <Ionicons name="image-outline" size={22} color={colors.textMuted} />
           </View>
         )}
         {gen.night ? (
@@ -183,45 +195,51 @@ function HistoryRow({ gen, onPress }: { gen: Generation; onPress: () => void }) 
         ) : null}
         <Text style={styles.rowTime}>{time}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-    </Pressable>
+      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { padding: 12, gap: 10 },
+  list: {
+    padding: spacing.md,
+    gap: spacing.sm,
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: layout.maxContentWidth,
+  },
   disclaimer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 4,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F7',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.xs,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
   },
-  disclaimerText: { flex: 1, fontSize: 12, color: '#8E8E93', lineHeight: 16 },
+  disclaimerText: { flex: 1, ...type.caption, color: colors.textSecondary },
   sectionHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8E8E93',
+    ...type.label,
+    color: colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginTop: 12,
-    marginBottom: 6,
+    letterSpacing: 0.5,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 10,
-    borderRadius: 14,
-    backgroundColor: '#fff',
+    gap: spacing.md,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E5EA',
+    borderColor: colors.border,
   },
+  rowPressed: { backgroundColor: colors.surfaceAlt },
   thumbWrap: { width: 64, height: 64 },
-  thumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F0F0F3' },
+  thumb: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
   thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   nightBadge: {
     position: 'absolute',
@@ -229,30 +247,29 @@ const styles = StyleSheet.create({
     right: -3,
     width: 20,
     height: 20,
-    borderRadius: 10,
-    backgroundColor: '#1C1C4E',
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#fff',
+    borderColor: colors.surface,
   },
   rowBody: { flex: 1, gap: 2 },
-  rowTitle: { fontSize: 16, fontWeight: '600', color: '#1C1C1E' },
-  rowPrompt: { fontSize: 13, color: '#8E8E93' },
-  rowTime: { fontSize: 12, color: '#C7C7CC' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, padding: 24 },
-  centerPad: { flex: 1, padding: 12 },
-  muted: { fontSize: 15, color: '#8E8E93', textAlign: 'center' },
-  emptyText: { fontSize: 17, fontWeight: '600', color: '#3A3A3C' },
-  emptySub: { fontSize: 14, color: '#8E8E93' },
-  retryButton: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#208AEF',
+  rowTitle: { ...type.bodyStrong, fontSize: 16, color: colors.text },
+  rowPrompt: { ...type.caption, fontSize: 13, color: colors.textSecondary },
+  rowTime: { ...type.caption, color: colors.textMuted },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
+  centerPad: { flex: 1, padding: spacing.md },
+  muted: { ...type.body, color: colors.textSecondary, textAlign: 'center' },
+  emptyIcon: {
+    width: 76,
+    height: 76,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
-  retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  emptyText: { ...type.subheading, color: colors.text },
+  emptySub: { ...type.body, color: colors.textMuted },
 });
